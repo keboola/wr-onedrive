@@ -115,16 +115,20 @@ class FixturesCatalog
         $api = new FixturesApi();
         try {
             $api->delete($api->pathToUrl($this->getMeDriveId(), self::TMP_DIR));
-        } catch (ResourceNotFoundException $e) {
-            // ignore error if file not found
+        } catch (\Throwable $e) {
+            FixturesUtils::log(
+                'Warning, cannot clear tmp dir in site drive. Probably API random lock problem.'
+            );
         }
 
         $sharePointDrive = $this->getSharePointDrive();
         if ($sharePointDrive) {
             try {
                 $api->delete($api->pathToUrl($sharePointDrive->getDriveId(), self::TMP_DIR));
-            } catch (ResourceNotFoundException $e) {
-                // ignore error if file not found
+            } catch (\Throwable $e) {
+                FixturesUtils::log(
+                    'Warning, cannot clear tmp dir in site drive. Probably API random lock problem.'
+                );
             }
         }
     }

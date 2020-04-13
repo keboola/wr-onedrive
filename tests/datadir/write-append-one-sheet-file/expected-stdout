@@ -1,0 +1,7 @@
+Searching for "%a.xlsx" in drive "%a".
+Found worksheet "Only One Sheet" at position "0".
+Found input CSV file "input-file.csv".
+Current sheet range: "A1:C3"
+Current sheet header "A1:C1": "Col_1", "Col_2", "Col_3"
+Inserted 2 rows.
+

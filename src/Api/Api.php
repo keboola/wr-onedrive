@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\Api;
 
+use GuzzleHttp\Exception\ConnectException;
 use Throwable;
 use Iterator;
 use Psr\Log\LoggerInterface;
@@ -299,6 +300,11 @@ class Api
     {
         $backOffPolicy = new ExponentialBackOffPolicy(100, 2.0, 4000);
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
+            // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
+            if ($e instanceof ConnectException) {
+                return true;
+            }
+
             if ($e instanceof RequestException || $e instanceof BatchRequestException) {
                 // Retry only on defined HTTP codes
                 if (in_array($e->getCode(), self::RETRY_HTTP_CODES, true)) {

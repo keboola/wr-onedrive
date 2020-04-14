@@ -17,7 +17,7 @@ class CreateEmptyFileTest extends BaseTest
         $path = $dir . '/' . $name;
         $endpoint = '/me/drive/root' . Helpers::convertPathToApiFormat($path);
 
-        $file = $this->api->createEmptyFile($endpoint);
+        $file = $this->api->createEmptyWorkbook($endpoint);
         Assert::assertSame($this->fixtures->getMeDriveId(), $file->getDriveId());
         Assert::assertNotEmpty($file->getFileId());
         Assert::assertSame($dir, '/' . implode('/', $file->getPath()));

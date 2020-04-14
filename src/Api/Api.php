@@ -46,11 +46,11 @@ class Api
         return (string) $response['userPrincipalName'];
     }
 
-    public function createEmptyFile(string $endpoint): File
+    public function createEmptyWorkbook(string $endpoint): File
     {
         $uploader = new FileUploader($this);
         $file = $uploader->upload($endpoint, __DIR__ . '/Fixtures/empty.xlsx');
-        $this->logger->info(sprintf('New file "%s" created.', implode('/', $file->getPathname())));
+        $this->logger->info(sprintf('New workbook "%s" created.', implode('/', $file->getPathname())));
         return $file;
     }
 
@@ -265,7 +265,9 @@ class Api
     public function searchWorkbook(string $search = ''): File
     {
         $finder = new WorkbooksFinder($this, $this->logger);
-        return $finder->search($search);
+        $file = $finder->search($search);
+        $this->logger->info(sprintf('Found workbook "%s".', $file->getName()));
+        return $file;
     }
 
     public function getGraph(): Graph

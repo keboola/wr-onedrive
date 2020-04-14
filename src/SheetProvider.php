@@ -84,7 +84,7 @@ class SheetProvider
         try {
             $file = $this->api->searchWorkbook($search);
         } catch (FileInDriveNotFoundException $e) {
-            $file = $this->api->createEmptyFile($e->getEndpointUrl());
+            $file = $this->api->createEmptyWorkbook($e->getEndpointUrl());
         } catch (ResourceNotFoundException $e) {
             throw new ResourceNotFoundException(
                 sprintf('No file found when searching for "%s".', $search),

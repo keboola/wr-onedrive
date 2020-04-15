@@ -14,11 +14,10 @@ use Microsoft\Graph\Graph;
 
 class GraphApiFactory
 {
-    private const
-        AUTHORITY_URL = 'https://login.microsoftonline.com/common',
-        AUTHORIZE_ENDPOINT = '/oauth2/v2.0/authorize',
-        TOKEN_ENDPOINT = '/oauth2/v2.0/token',
-        SCOPES = ['offline_access', 'User.Read', 'Files.ReadWrite.All', 'Sites.ReadWrite.All'];
+    private const AUTHORITY_URL = 'https://login.microsoftonline.com/common';
+    private const AUTHORIZE_ENDPOINT = '/oauth2/v2.0/authorize';
+    private const TOKEN_ENDPOINT = '/oauth2/v2.0/token';
+    private const SCOPES = ['offline_access', 'User.Read', 'Files.ReadWrite.All', 'Sites.ReadWrite.All'];
 
     public function create(string $appId, string $appSecret, array $authData): Graph
     {

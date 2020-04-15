@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter;
 
+use Keboola\OneDriveWriter\Configuration\SyncActionConfigDefinition;
 use Psr\Log\LoggerInterface;
 use UnexpectedValueException;
 use Keboola\OneDriveWriter\Exception\ResourceNotFoundException;
@@ -11,8 +12,6 @@ use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Api\ApiFactory;
 use Keboola\Component\BaseComponent;
 use Keboola\OneDriveWriter\Configuration\Config;
-use Keboola\OneDriveWriter\Configuration\Actions\SearchConfigDefinition;
-use Keboola\OneDriveWriter\Configuration\Actions\GetWorksheetsConfigDefinition;
 use Keboola\OneDriveWriter\Configuration\ConfigDefinition;
 
 class Component extends BaseComponent
@@ -93,9 +92,8 @@ class Component extends BaseComponent
             case self::ACTION_RUN:
                 return ConfigDefinition::class;
             case self::ACTION_SEARCH:
-                return SearchConfigDefinition::class;
             case self::ACTION_GET_WORKSHEETS:
-                return GetWorksheetsConfigDefinition::class;
+                return SyncActionConfigDefinition::class;
             default:
                 throw new UnexpectedValueException(sprintf('Unexpected action "%s"', $action));
         }

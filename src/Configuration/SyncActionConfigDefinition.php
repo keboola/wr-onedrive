@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Keboola\OneDriveWriter\Configuration\Actions;
+namespace Keboola\OneDriveWriter\Configuration;
 
 use Keboola\Component\Config\BaseConfigDefinition;
 use Keboola\OneDriveWriter\Configuration\Parts\WorkbookDefinition;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class SearchConfigDefinition extends BaseConfigDefinition
+class SyncActionConfigDefinition extends BaseConfigDefinition
 {
     protected function getParametersDefinition(): ArrayNodeDefinition
     {

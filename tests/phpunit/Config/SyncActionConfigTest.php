@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\Tests\Config;
 
-use Keboola\OneDriveWriter\Configuration\Actions\SearchConfigDefinition;
 use Keboola\OneDriveWriter\Configuration\Config;
+use Keboola\OneDriveWriter\Configuration\SyncActionConfigDefinition;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
-class SearchConfigTest extends BaseConfigTest
+class SyncActionConfigTest extends BaseConfigTest
 {
     /**
      * @dataProvider validConfigProvider
      */
     public function testValidConfig(array $config): void
     {
-        new Config($config, new SearchConfigDefinition());
+        new Config($config, new SyncActionConfigDefinition());
         $this->addToAssertionCount(1); // Assert no error
     }
 
@@ -26,7 +26,7 @@ class SearchConfigTest extends BaseConfigTest
     {
         $this->expectException(InvalidConfigurationException::class);
         $this->expectExceptionMessage($expectedMsg);
-        new Config($config, new SearchConfigDefinition());
+        new Config($config, new SyncActionConfigDefinition());
     }
 
     public function validConfigProvider(): array

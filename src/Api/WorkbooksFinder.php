@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\Api;
 
-use Iterator;
 use GuzzleHttp\Exception\RequestException;
 use Keboola\OneDriveWriter\Api\Model\File;
 use Keboola\OneDriveWriter\Exception\FileInDriveNotFoundException;

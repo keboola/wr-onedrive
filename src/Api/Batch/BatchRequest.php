@@ -9,7 +9,6 @@ use InvalidArgumentException;
 use GuzzleHttp\Exception\RequestException;
 use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
-use Microsoft\Graph\Graph;
 use Microsoft\Graph\Http\GraphResponse;
 
 /**

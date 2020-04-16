@@ -36,7 +36,7 @@ class InsertRowsTest extends BaseTest
         $iterator = new ArrayIterator($insertRows);
         $this->api->insertRows(
             new Sheet(
-                new SheetFile($file->getDriveId(), $file->getFileId()),
+                new SheetFile($file->getDriveId(), $file->getFileId(), false),
                 $file->getWorksheetId(0),
                 'Some name',
                 false

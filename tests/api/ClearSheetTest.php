@@ -23,7 +23,7 @@ class ClearSheetTest extends BaseTest
 
         // Clear
         $this->api->clearSheet(new Sheet(
-            new SheetFile($file->getDriveId(), $file->getFileId()),
+            new SheetFile($file->getDriveId(), $file->getFileId(), false),
             $file->getWorksheetId(0),
             'Some name',
             false

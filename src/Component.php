@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter;
 
+use Keboola\OneDriveWriter\Configuration\CreateWorkbookConfigDefinition;
+use Keboola\OneDriveWriter\Configuration\CreateWorksheetConfigDefinition;
 use Keboola\OneDriveWriter\Configuration\SyncActionConfigDefinition;
 use Psr\Log\LoggerInterface;
 use UnexpectedValueException;
@@ -19,6 +21,8 @@ class Component extends BaseComponent
     public const ACTION_RUN = 'run';
     public const ACTION_SEARCH = 'search';
     public const ACTION_GET_WORKSHEETS = 'getWorksheets';
+    public const ACTION_CREATE_WORKBOOK = 'createWorkbook';
+    public const ACTION_CREATE_WORKSHEET = 'createWorksheet';
 
     private Api $api;
 
@@ -49,6 +53,8 @@ class Component extends BaseComponent
         return [
             self::ACTION_SEARCH => 'handleSearchSyncAction',
             self::ACTION_GET_WORKSHEETS => 'handleGetWorksheetsSyncAction',
+            self::ACTION_CREATE_WORKBOOK => 'handleCreateWorkbookSyncAction',
+            self::ACTION_CREATE_WORKSHEET => 'handleCreateWorksheetSyncAction',
         ];
     }
 
@@ -80,6 +86,22 @@ class Component extends BaseComponent
         ];
     }
 
+    protected function handleCreateWorkbookSyncAction(): array
+    {
+        $file = $this->sheetProvider->createFile();
+        return [
+            'file' => $file,
+        ];
+    }
+
+    protected function handleCreateWorksheetSyncAction(): array
+    {
+        $sheet = $this->sheetProvider->createSheet();
+        return [
+            'worksheet' => $sheet,
+        ];
+    }
+
     protected function getConfigClass(): string
     {
         return Config::class;
@@ -91,6 +113,10 @@ class Component extends BaseComponent
         switch ($action) {
             case self::ACTION_RUN:
                 return ConfigDefinition::class;
+            case self::ACTION_CREATE_WORKBOOK:
+                return CreateWorkbookConfigDefinition::class;
+            case self::ACTION_CREATE_WORKSHEET:
+                return CreateWorksheetConfigDefinition::class;
             case self::ACTION_SEARCH:
             case self::ACTION_GET_WORKSHEETS:
                 return SyncActionConfigDefinition::class;

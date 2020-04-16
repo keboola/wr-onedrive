@@ -30,7 +30,7 @@ class ClearSheetTest extends BaseTest
         ));
 
         // Empty content after
-        usleep(500 * 1000);
+        sleep(1);
         $content = $this->utils->getWorksheetContent($file, 0);
         Assert::assertTrue($content->isEmpty());
         Assert::assertSame('A1:A1', $content->getRange()->getAddress());

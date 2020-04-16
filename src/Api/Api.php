@@ -298,7 +298,7 @@ class Api
 
     private function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
     {
-        $backOffPolicy = new ExponentialBackOffPolicy(100, 2.0, 4000);
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 20000);
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
             if ($e instanceof ConnectException) {

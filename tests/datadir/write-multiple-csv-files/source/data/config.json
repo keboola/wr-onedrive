@@ -1,0 +1,19 @@
+{
+  "authorization": {
+    "oauth_api": {
+      "credentials": {
+        "#data": "${OAUTH_DATA}",
+        "#appSecret": "${OAUTH_APP_SECRET}",
+        "appKey": "${OAUTH_APP_ID}"
+      }
+    }
+  },
+  "parameters": {
+    "workbook": {
+      "path": "drive://${FIXTURES_CATALOG::getDriveId}${FIXTURES_CATALOG::DRIVE::TMP_FILE::FILE_EMPTY::getPath}"
+    },
+    "worksheet": {
+      "position": 0
+    }
+  }
+}

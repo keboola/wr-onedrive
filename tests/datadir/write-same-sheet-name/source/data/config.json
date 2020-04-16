@@ -1,0 +1,21 @@
+{
+  "authorization": {
+    "oauth_api": {
+      "credentials": {
+        "#data": "${OAUTH_DATA}",
+        "#appSecret": "${OAUTH_APP_SECRET}",
+        "appKey": "${OAUTH_APP_ID}"
+      }
+    }
+  },
+  "parameters": {
+    "append": false,
+    "workbook": {
+      "path": "${FIXTURES_CATALOG::ME_DRIVE::TMP_FILE::FILE_ONE_SHEET::getPath}"
+    },
+    "worksheet": {
+      "name": "Only One Sheet",
+      "position": 0
+    }
+  }
+}

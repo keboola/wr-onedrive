@@ -17,7 +17,7 @@ class ClearSheetTest extends BaseTest
         $file = $this->utils->uploadTmpFile($driveId, FixturesCatalog::FILE_SPECIAL_CASES);
 
         // Not empty content before
-        $content = $this->utils->getWorksheetContentFromFile($file, 0);
+        $content = $this->utils->getWorksheetContent($file, 0);
         Assert::assertFalse($content->isEmpty());
         Assert::assertSame('C4:I14', $content->getRange()->getAddress());
 
@@ -31,7 +31,7 @@ class ClearSheetTest extends BaseTest
 
         // Empty content after
         usleep(500 * 1000);
-        $content = $this->utils->getWorksheetContentFromFile($file, 0);
+        $content = $this->utils->getWorksheetContent($file, 0);
         Assert::assertTrue($content->isEmpty());
         Assert::assertSame('A1:A1', $content->getRange()->getAddress());
     }

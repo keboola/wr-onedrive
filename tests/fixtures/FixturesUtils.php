@@ -188,11 +188,15 @@ class FixturesUtils
         }
     }
 
-    public function getWorksheetContent(string $driveId, string $fileId, string $worksheetId): WorksheetContent
+    public function getWorksheetContent(File $file, int $worksheet): WorksheetContent
     {
         $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
         $uri = $endpoint . '/usedRange(valuesOnly=true)?$select=address,text';
-        $args = ['driveId' => $driveId, 'fileId' => $fileId, 'worksheetId' => $worksheetId];
+        $args = [
+            'driveId' => $file->getDriveId(),
+            'fileId' => $file->getFileId(),
+            'worksheetId' => $file->getWorksheetId($worksheet)]
+        ;
 
         // Get rows
         $body = $this->api->get(Helpers::replaceParamsInUri($uri, $args))->getBody();
@@ -203,15 +207,6 @@ class FixturesUtils
         $rows = $empty ? [] : $rows;
 
         return new WorksheetContent($body['address'], $rows);
-    }
-
-    public function getWorksheetContentFromFile(File $file, int $worksheet): WorksheetContent
-    {
-        return $this->getWorksheetContent(
-            $file->getDriveId(),
-            $file->getFileId(),
-            $file->getWorksheetId($worksheet)
-        );
     }
 
     public function loadWorksheets(string $path, string $driveId, string $fileId): Iterator

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\DataDirTests;
 
+use Keboola\OneDriveWriter\Fixtures\File;
 use Keboola\OneDriveWriter\Fixtures\FixturesUtils;
 use PHPUnit\Framework\SkippedTestError;
 use RuntimeException;
@@ -22,12 +23,16 @@ class DatadirTest extends AbstractDatadirTestCase
 
     protected ReflectionClass $fixturesCatalogRef;
 
+    /** @var File[] */
+    protected array $tmpFiles;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->fixtures = FixturesCatalog::load();
         $this->utils = new FixturesUtils();
         $this->fixturesCatalogRef = new ReflectionClass(FixturesCatalog::class);
+        $this->tmpFiles = [];
     }
 
 
@@ -120,11 +125,17 @@ class DatadirTest extends AbstractDatadirTestCase
                             return implode('/', FixturesUtils::createTmpFilePath());
 
                         case 'TMP_FILE':
-                            // Upload tmp file
                             $fileConst = (string) array_shift($parts);
-                            $localPath = $this->getTestFilePath($fileConst);
-                            $file = $this->utils->uploadTmpFile($drive->getDriveId(), $localPath);
-                            sleep(1);
+                            if (isset($this->tmpFiles[$fileConst])) {
+                                // Get already uploaded file from cache
+                                $file = $this->tmpFiles[$fileConst];
+                            } else {
+                                // Upload tmp file
+                                $localPath = $this->getTestFilePath($fileConst);
+                                $file = $this->utils->uploadTmpFile($drive->getDriveId(), $localPath);
+                                $this->tmpFiles[$fileConst] = $file;
+                                sleep(1);
+                            }
                             break;
 
                         default:

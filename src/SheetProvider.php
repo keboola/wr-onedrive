@@ -45,7 +45,7 @@ class SheetProvider
     {
         if (!$this->config->hasWorksheetName()) {
             throw new InvalidConfigException(
-                'To create worksheet must be configured "parameters.worksheet.name".'
+                'To create worksheet please configure "parameters.worksheet.name".'
             );
         }
 

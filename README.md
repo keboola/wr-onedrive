@@ -85,6 +85,68 @@ If the file does not exist, it is created.
 
 Read more about actions [in KBC documentation](https://developers.keboola.com/extend/common-interface/actions/).
 
+### Create Workbook
+
+- Action `createWorkbook` serves to create a new workbook - XLSX file.
+- Workbook must be defined by `parameters.workbook.path`, for format see [Workbook](#workbook).
+
+**Example `config.json`**:
+```json
+{
+  "authorization": {"oauth_api":  "..."},
+  "action": "createWorkbook",
+  "parameters": {
+    "workbook": {
+      "path": "site://Excel+Sheets/path/to/file.xlsx"
+    }
+  }
+}
+```
+
+**Example result**:
+```json
+{
+  "file": {
+    "driveId": "...",
+    "fileId": "..."
+  }
+}
+```
+
+### Create Worksheet
+
+- Action `createWorksheet` serves to create a new worksheet in workbook.
+- Parent `workbook` must be defined by [`driveId` and `fileId`] or `path`, see [Workbook](#workbook).
+- The new worksheet must be defined by `parameters.worksheet.name`, see [Worksheet](#worksheet).
+
+**Example `config.json`**:
+```json
+{
+  "authorization": {"oauth_api":  "..."},
+  "action": "createWorksheet",
+  "parameters": {
+    "workbook": {
+      "driveId": "...",
+      "fileId": "..."
+    },
+    "worksheet": {
+      "name": "New Sheet"
+    }
+  }
+}
+```
+
+**Example result**:
+```json
+{
+  "worksheet": {
+    "driveId": "...",
+    "fileId": "...",
+    "worksheetId": "..."
+  }
+}
+```
+
 ### Search Action
 
 - Action `search` serves to get `driveId` and `fileId` of spreadsheet `XLSX` file.
@@ -102,11 +164,9 @@ Read more about actions [in KBC documentation](https://developers.keboola.com/ex
     }
   }
 }
-
 ```
 
 **Example result**:
-
 ```json
 {
   "file": {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\Fixtures;
 
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Api\Helpers;
@@ -17,7 +18,7 @@ use Microsoft\Graph\Http\GraphResponse;
 
 class FixturesApi
 {
-    private const RETRY_HTTP_CODES = Api::RETRY_HTTP_CODES + [401];
+    private const RETRY_HTTP_CODES = Api::RETRY_HTTP_CODES + [401, 404];
 
     private Graph $graphApi;
 
@@ -48,8 +49,13 @@ class FixturesApi
 
     public function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
     {
-        $backOffPolicy = new ExponentialBackOffPolicy(100, 2.0, 4000);
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 20000);
         $retryPolicy = new CallableRetryPolicy(function (\Throwable $e) {
+            // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
+            if ($e instanceof ConnectException) {
+                return true;
+            }
+
             if ($e instanceof RequestException || $e instanceof BatchRequestException) {
                 // Retry only on defined HTTP codes
                 if (in_array($e->getCode(), self::RETRY_HTTP_CODES, true)) {

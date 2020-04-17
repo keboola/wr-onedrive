@@ -1,4 +1,5 @@
 Searching for "%a.xlsx" in drive "%a".
+Found workbook "%a.xlsx".
 Found worksheet "Hidden Sheet 3" at position "2".
 Found input CSV file "input-file.csv".
 Current sheet range: "A48:C50"

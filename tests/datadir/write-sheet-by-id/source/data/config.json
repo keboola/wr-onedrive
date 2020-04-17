@@ -11,11 +11,11 @@
   "parameters": {
     "append": false,
     "workbook": {
-      "driveId": "${FIXTURES_CATALOG::DRIVE::FILE_ONE_SHEET::getDriveId}",
-      "fileId": "${FIXTURES_CATALOG::DRIVE::FILE_ONE_SHEET::getFileId}"
+      "driveId": "${FIXTURES_CATALOG::DRIVE::TMP_FILE::FILE_ONE_SHEET::getDriveId}",
+      "fileId": "${FIXTURES_CATALOG::DRIVE::TMP_FILE::FILE_ONE_SHEET::getFileId}"
     },
     "worksheet": {
-      "id": "${FIXTURES_CATALOG::DRIVE::FILE_ONE_SHEET::getWorksheetId::0}"
+      "id": "${FIXTURES_CATALOG::DRIVE::TMP_FILE::FILE_ONE_SHEET::getWorksheetId::0}"
     }
   }
 }

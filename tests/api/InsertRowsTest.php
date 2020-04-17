@@ -29,14 +29,14 @@ class InsertRowsTest extends BaseTest
         $file = $this->utils->uploadTmpFile($driveId, $fileName);
 
         // Content before
-        $contentBefore = $this->utils->getWorksheetContentFromFile($file, 0);
+        $contentBefore = $this->utils->getWorksheetContent($file, 0);
         Assert::assertSame($rangeBefore, $contentBefore->getRange()->getAddress());
 
         // Insert
         $iterator = new ArrayIterator($insertRows);
         $this->api->insertRows(
             new Sheet(
-                new SheetFile($file->getDriveId(), $file->getFileId()),
+                new SheetFile($file->getDriveId(), $file->getFileId(), false),
                 $file->getWorksheetId(0),
                 'Some name',
                 false
@@ -47,8 +47,8 @@ class InsertRowsTest extends BaseTest
         );
 
         // Check result
-        sleep(1);
-        $contentAfter = $this->utils->getWorksheetContentFromFile($file, 0);
+        sleep(2);
+        $contentAfter = $this->utils->getWorksheetContent($file, 0);
         Assert::assertSame($rangeAfter, $contentAfter->getRange()->getAddress());
         Assert::assertSame($stateAfter, $contentAfter->getRows());
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\Api;
 
+use GuzzleHttp\Exception\ConnectException;
 use Throwable;
 use Iterator;
 use Psr\Log\LoggerInterface;
@@ -46,11 +47,11 @@ class Api
         return (string) $response['userPrincipalName'];
     }
 
-    public function createEmptyFile(string $endpoint): File
+    public function createEmptyWorkbook(string $endpoint): File
     {
         $uploader = new FileUploader($this);
         $file = $uploader->upload($endpoint, __DIR__ . '/Fixtures/empty.xlsx');
-        $this->logger->info(sprintf('New file "%s" created.', implode('/', $file->getPathname())));
+        $this->logger->info(sprintf('New workbook "%s" created.', implode('/', $file->getPathname())));
         return $file;
     }
 
@@ -265,7 +266,9 @@ class Api
     public function searchWorkbook(string $search = ''): File
     {
         $finder = new WorkbooksFinder($this, $this->logger);
-        return $finder->search($search);
+        $file = $finder->search($search);
+        $this->logger->info(sprintf('Found workbook "%s".', $file->getName()));
+        return $file;
     }
 
     public function getGraph(): Graph
@@ -295,8 +298,13 @@ class Api
 
     private function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
     {
-        $backOffPolicy = new ExponentialBackOffPolicy(100, 2.0, 4000);
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 20000);
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
+            // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
+            if ($e instanceof ConnectException) {
+                return true;
+            }
+
             if ($e instanceof RequestException || $e instanceof BatchRequestException) {
                 // Retry only on defined HTTP codes
                 if (in_array($e->getCode(), self::RETRY_HTTP_CODES, true)) {

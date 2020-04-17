@@ -98,7 +98,7 @@ Read more about actions [in KBC documentation](https://developers.keboola.com/ex
   "action": "search",
   "parameters": {
     "workbook": {
-      "search": "https://.../sharing/link/from/OneDrive/...."
+      "path": "https://.../sharing/link/from/OneDrive/...."
     }
   }
 }
@@ -147,7 +147,7 @@ Workbook configured by `path`. If workbook is not found action results to `UserE
   "action": "getWorksheets",
   "parameters": {
     "workbook": {
-      "search": "site://Excel+Sheets/path/to/file.xlsx"
+      "path": "site://Excel+Sheets/path/to/file.xlsx"
     }
   }
 }

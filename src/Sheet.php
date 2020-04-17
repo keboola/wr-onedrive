@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter;
 
-class Sheet
+class Sheet implements \JsonSerializable
 {
     private SheetFile $file;
 
@@ -45,5 +45,14 @@ class Sheet
     public function isNew(): bool
     {
         return $this->new;
+    }
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'driveId' => $this->getDriveId(),
+            'fileId' => $this->getFileId(),
+            'worksheetId' => $this->id,
+        ];
     }
 }

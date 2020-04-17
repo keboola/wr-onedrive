@@ -19,7 +19,7 @@ class RangeTest extends BaseTest
         $fixture = $this->fixtures->getDrive()->getFile($file);
         $range = $this->api->getSheetRange(
             new Sheet(
-                new SheetFile($fixture->getDriveId(), $fixture->getFileId()),
+                new SheetFile($fixture->getDriveId(), $fixture->getFileId(), false),
                 $fixture->getWorksheetId($worksheetPosition),
                 'Some name',
                 false,

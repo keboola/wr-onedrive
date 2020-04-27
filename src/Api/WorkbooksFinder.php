@@ -6,6 +6,7 @@ namespace Keboola\OneDriveWriter\Api;
 
 use GuzzleHttp\Exception\RequestException;
 use Keboola\OneDriveWriter\Api\Model\File;
+use Keboola\OneDriveWriter\Exception\BadRequestException;
 use Keboola\OneDriveWriter\Exception\FileInDriveNotFoundException;
 use Keboola\OneDriveWriter\Exception\InvalidFileTypeException;
 use Keboola\OneDriveWriter\Exception\ResourceNotFoundException;
@@ -133,6 +134,11 @@ class WorkbooksFinder
                 default:
                     throw $e;
             }
+        } catch (BadRequestException $e) {
+            throw new ShareLinkException(sprintf(
+                'The sharing link "%s..." is invalid.',
+                substr($url, 0, 32)
+            ), 0, $e);
         }
 
         // Check mime type

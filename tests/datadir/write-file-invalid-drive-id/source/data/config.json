@@ -1,0 +1,22 @@
+{
+  "authorization": {
+    "oauth_api": {
+      "credentials": {
+        "#data": "${OAUTH_DATA}",
+        "#appSecret": "${OAUTH_APP_SECRET}",
+        "appKey": "${OAUTH_APP_ID}"
+      }
+    }
+  },
+  "parameters": {
+    "append": false,
+    "workbook": {
+      "driveId": "invalid_drive_id",
+      "fileId": "${FIXTURES_CATALOG::DRIVE::TMP_FILE::FILE_ONE_SHEET::getFileId}"
+    },
+    "worksheet": {
+      "name": "Sheet Test Name",
+      "position": 0
+    }
+  }
+}

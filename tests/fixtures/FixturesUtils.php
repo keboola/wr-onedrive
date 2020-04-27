@@ -125,15 +125,18 @@ class FixturesUtils
         $url = $this->api->pathToUrl($driveId, $drivePath . '/' . $name);
 
         // Create upload session
+        $retryProxy = $this->api->createRetryProxy();
         /** @var Model\UploadSession $uploadSession */
-        $uploadSession = $this
-            ->api
-            ->getGraph()
-            ->createRequest('POST', $url . 'createUploadSession')
-            ->attachBody(['@microsoft.graph.conflictBehavior'=> 'replace' ])
-            ->setReturnType(Model\UploadSession::class)
-            ->setTimeout('1000')
-            ->execute();
+        $uploadSession = $retryProxy->call(function () use ($url) {
+            return $this
+                ->api
+                ->getGraph()
+                ->createRequest('POST', $url . 'createUploadSession')
+                ->attachBody(['@microsoft.graph.conflictBehavior'=> 'replace' ])
+                ->setReturnType(Model\UploadSession::class)
+                ->setTimeout('1000')
+                ->execute();
+        });
 
         // Upload file in parts
         $file = fopen($localPath, 'r');
@@ -146,18 +149,20 @@ class FixturesUtils
                 $start = ftell($file);
                 $data = fread($file, $uploadFragSize);
                 $end = ftell($file);
-                $uploadSession = $this
-                    ->api
-                    ->getGraph()
-                    ->createRequest('PUT', $uploadSession->getUploadUrl())
-                    ->addHeaders([
-                        'Content-Length' => $end - $start,
-                        'Content-Range' => sprintf('bytes %d-%d/%d', $start, $end-1, $fileSize),
-                    ])
-                    ->attachBody($data)
-                    ->setReturnType(Model\UploadSession::class)
-                    ->setTimeout('1000')
-                    ->execute();
+                $uploadSession = $retryProxy->call(function () use ($uploadSession, $start, $end, $fileSize, $data) {
+                    return $this
+                        ->api
+                        ->getGraph()
+                        ->createRequest('PUT', $uploadSession->getUploadUrl())
+                        ->addHeaders([
+                            'Content-Length' => $end - $start,
+                            'Content-Range' => sprintf('bytes %d-%d/%d', $start, $end-1, $fileSize),
+                        ])
+                        ->attachBody($data)
+                        ->setReturnType(Model\UploadSession::class)
+                        ->setTimeout('1000')
+                        ->execute();
+                });
             }
         } finally {
             fclose($file);

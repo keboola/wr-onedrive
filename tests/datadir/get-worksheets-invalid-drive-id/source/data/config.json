@@ -8,15 +8,11 @@
       }
     }
   },
+  "action": "getWorksheets",
   "parameters": {
-    "append": false,
     "workbook": {
-      "driveId": "b!nZgsjp3RK0aRFp01PZWjKUicqho1KehCtKM1UhLEWybvgM_dt6mJRKV57vuJLf6P",
-      "fileId": "03GQDMCCLEQDECJHR7CRF3WI7AB4GWJESQ"
-    },
-    "worksheet": {
-      "name": "Sheet Test Name",
-      "position": 0
+      "driveId": "invalid_drive_id",
+      "fileId": "${FIXTURES_CATALOG::DRIVE::FILE_EMPTY::getFileId}"
     }
   }
 }

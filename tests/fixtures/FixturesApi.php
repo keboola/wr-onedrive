@@ -49,6 +49,14 @@ class FixturesApi
 
     public function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
     {
+        $proxy = $this->createRetryProxy();
+        return $proxy->call(function () use ($method, $uri, $params, $body) {
+            return $this->execute($method, $uri, $params, $body);
+        });
+    }
+
+    public function createRetryProxy(): RetryProxy
+    {
         $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 20000);
         $retryPolicy = new CallableRetryPolicy(function (\Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
@@ -76,10 +84,7 @@ class FixturesApi
             return false;
         });
 
-        $proxy = new RetryProxy($retryPolicy, $backOffPolicy);
-        return $proxy->call(function () use ($method, $uri, $params, $body) {
-            return $this->execute($method, $uri, $params, $body);
-        });
+        return new RetryProxy($retryPolicy, $backOffPolicy);
     }
 
     public function execute(string $method, string $uri, array $params = [], array $body = []): GraphResponse

@@ -55,6 +55,22 @@ class SyncActionConfigTest extends BaseConfigTest
                     ],
                 ],
             ],
+            'valid-ids-plus-metadata' => [
+                [
+                    'action' => 'path',
+                    'authorization' => $this->getValidAuthorization(),
+                    'parameters' => [
+                        'workbook' => [
+                            'driveId' => '...',
+                            'fileId' => '...',
+                            'metadata' => [
+                                'a' => 1,
+                                'b' => 'abc',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 

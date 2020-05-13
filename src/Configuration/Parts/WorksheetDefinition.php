@@ -27,6 +27,8 @@ class WorksheetDefinition
                 ->scalarNode('id')->cannotBeEmpty()->end()
                 // ... or position
                 ->scalarNode('position')->cannotBeEmpty()->end()
+                // optional metadata can be always present, it is not used in code
+                ->arrayNode('metadata')->ignoreExtraKeys(true)->end()
             ->end()
             // Only one of id/position allowed
             ->validate()

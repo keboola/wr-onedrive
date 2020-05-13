@@ -14,12 +14,20 @@ The configuration `config.json` contains following properties in `parameters` ke
     - `driveId` - string: id of [drive resource](https://docs.microsoft.com/en-us/graph/api/resources/drive?view=graph-rest-1.0)    
     - `fileId` - string: id of [driveItem resource](https://docs.microsoft.com/en-us/graph/api/resources/driveitem?view=graph-rest-1.0)
     - `path` - string: format see below 
+    - `metadata` - object (optional): 
+       - Serves to store human-readable data when `driveId` / `fileId` are used to define `workbook`.
+       - The component code is not using content of this metadata. 
+       - UI can use it to store and later show metadata from FilePicker.
 - `worksheet` - object (required): Worksheet, one sheet from workbook's sheets. [Read more](#worksheet).
     - One of `id`, `position` or `name` must be configured.
     - If `id` is set, then `position` cannot be set and vice versa, but `name` can always be present.
     - `id` - string: id of [worksheet resource](https://docs.microsoft.com/en-us/graph/api/resources/worksheet?view=graph-rest-1.0)
     - `name` - string: worksheet name
     - `position` - int: worksheet position, first is 0, hidden sheets are included
+    - `metadata` - object (optional): 
+       - Serves to store human-readable data (eg. sheet name ) when `id` is used to define `worksheet`.
+       - The component code is not using content of this metadata.
+       - UI can use it to store and later show metadata from FilePicker.
 
 ### Workbook
 - Specified by one of [`driveId` and `fileId`] or `path` (not both).

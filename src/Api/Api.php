@@ -28,8 +28,14 @@ use Keboola\OneDriveWriter\Exception\UnexpectedValueException;
 
 class Api
 {
-    // Retry on 409 Conflict, Internal Serve Error, Bad Gateway, Service Unavailable and Gateway Timeout
-    public const RETRY_HTTP_CODES = [409, 500, 502, 503, 504];
+    public const RETRY_HTTP_CODES = [
+        405, // 405 - Method not allowed, it occurs when the creation of a new sheet is not yet fully propagated
+        409, // 409 Conflict
+        500, // 500 Internal Serve Error
+        502, // 502 Bad Gateway
+        503, // 503 Service Unavailable
+        504, // 504 Gateway Timeout
+    ];
 
     private Graph $graphApi;
 

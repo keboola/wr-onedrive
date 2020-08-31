@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Keboola\OneDriveWriter\Api\Batch;
 
 use Iterator;
+use NoRewindIterator;
+use ArrayIterator;
+use LimitIterator;
 use InvalidArgumentException;
 use GuzzleHttp\Exception\RequestException;
+use Keboola\OneDriveWriter\Api\Batch\Request;
 use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
 use Microsoft\Graph\Http\GraphResponse;
@@ -17,6 +21,9 @@ use Microsoft\Graph\Http\GraphResponse;
  */
 class BatchRequest
 {
+    // https://docs.microsoft.com/en-us/graph/known-issues#limit-on-batch-size
+    public const MAX_REQUESTS_PER_BATCH = 20;
+
     private Api $api;
 
     private ?int $limit;
@@ -50,11 +57,13 @@ class BatchRequest
         // Empty batch request cannot be executed, ... if empty => empty iterator is returned
         if ($this->requests) {
             $this->processedCount = 0;
-            $response = $this->runBatchRequest();
-            do {
-                yield from $this->processBatchResponse($response);
-                $response = $this->getNextPage($response);
-            } while ($response !== null);
+            $responses = $this->runBatchRequest();
+            foreach ($responses as $response) {
+                do {
+                    yield from $this->processBatchResponse($response);
+                    $response = $this->getNextPage($response);
+                } while ($response !== null);
+            }
         }
     }
 
@@ -70,23 +79,22 @@ class BatchRequest
         return $this->api->get($nextLink);
     }
 
-    private function runBatchRequest(): GraphResponse
+    /**
+     * @return GraphResponse[]
+     */
+    private function runBatchRequest(): array
     {
-        $retry = 3;
-        while (true) {
-            try {
-                return $this->api->post('/$batch', [], [
-                    'requests' =>
-                        array_map(fn(Request $request) => $request->toArray(), array_values($this->requests)),
-                ]);
-            } catch (RequestException $e) {
-                // Retry only if 504 Gateway Timeout
-                $response = $e->getResponse();
-                if ($retry-- <= 0 || !$response || $response->getStatusCode() !== 504) {
-                    throw $e;
-                }
-            }
+        /** @var GraphResponse[] $responses */
+        $responses = [];
+
+        $all = new NoRewindIterator(new ArrayIterator($this->requests));
+        while ($all->valid()) {
+            $batch = new LimitIterator($all, 0, self::MAX_REQUESTS_PER_BATCH);
+            $requests = array_map(fn(Request $request) => $request->toArray(), array_values(iterator_to_array($batch)));
+            $responses[] = $this->api->post('/$batch', [], [ 'requests' => $requests]);
         }
+
+        return $responses;
     }
 
     private function processBatchResponse(GraphResponse $batchResponse): Iterator

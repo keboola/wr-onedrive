@@ -80,7 +80,7 @@ class Helpers
             return new ResourceNotFoundException(sprintf($msg, $e->getRequest()->getUri()), 0, $e);
         } elseif ($e->getCode() === 404) {
             // ResourceNotFound, eg. bad fileId, "-1, Microsoft.SharePoint.Client.ResourceNotFoundException"
-            return new BadRequestException(
+            return new ResourceNotFoundException(
                 'Not found error. Please check configuration. ' .
                 'It can be caused by typo in an ID, or resource doesn\'t exists.',
                 $e->getCode(),

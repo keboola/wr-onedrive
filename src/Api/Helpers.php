@@ -6,6 +6,7 @@ namespace Keboola\OneDriveWriter\Api;
 
 use InvalidArgumentException;
 use Keboola\OneDriveWriter\Exception\BadRequestException;
+use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
 use Normalizer;
 use GuzzleHttp\Exception\RequestException;
 use Keboola\Component\JsonHelper;
@@ -79,7 +80,7 @@ class Helpers
             return new ResourceNotFoundException(sprintf($msg, $e->getRequest()->getUri()), 0, $e);
         } elseif ($e->getCode() === 404) {
             // ResourceNotFound, eg. bad fileId, "-1, Microsoft.SharePoint.Client.ResourceNotFoundException"
-            return new BadRequestException(
+            return new ResourceNotFoundException(
                 'Not found error. Please check configuration. ' .
                 'It can be caused by typo in an ID, or resource doesn\'t exists.',
                 $e->getCode(),
@@ -93,6 +94,13 @@ class Helpers
             return new BadRequestException(
                 'Bad request error. Please check configuration. ' .
                 'It can be caused by typo in an ID, or resource doesn\'t exists.',
+                $e->getCode(),
+                $e
+            );
+        } elseif ($e->getCode() === 504) {
+            return new GatewayTimeoutException(
+                'Gateway Timeout Error. The Microsoft OneDrive API has some problems. ' .
+                'Please try again later. API message: ' . $e->getMessage(),
                 $e->getCode(),
                 $e
             );

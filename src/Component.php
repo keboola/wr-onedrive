@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter;
 
+use ArrayObject;
+use Keboola\OneDriveWriter\Api\ApiFactory;
+use Keboola\OneDriveWriter\Auth\TokenProviderFactory;
 use Keboola\OneDriveWriter\Configuration\CreateWorkbookConfigDefinition;
 use Keboola\OneDriveWriter\Configuration\CreateWorksheetConfigDefinition;
 use Keboola\OneDriveWriter\Configuration\SyncActionConfigDefinition;
@@ -11,7 +14,6 @@ use Psr\Log\LoggerInterface;
 use UnexpectedValueException;
 use Keboola\OneDriveWriter\Exception\ResourceNotFoundException;
 use Keboola\OneDriveWriter\Api\Api;
-use Keboola\OneDriveWriter\Api\ApiFactory;
 use Keboola\Component\BaseComponent;
 use Keboola\OneDriveWriter\Configuration\Config;
 use Keboola\OneDriveWriter\Configuration\ConfigDefinition;
@@ -24,6 +26,8 @@ class Component extends BaseComponent
     public const ACTION_CREATE_WORKBOOK = 'createWorkbook';
     public const ACTION_CREATE_WORKSHEET = 'createWorksheet';
 
+    private ArrayObject $stateObject;
+
     private Api $api;
 
     private SheetProvider $sheetProvider;
@@ -32,13 +36,22 @@ class Component extends BaseComponent
     {
         parent::__construct($logger);
         $config = $this->getConfig();
-        $apiFactory = new ApiFactory($logger);
-        $this->api = $apiFactory->create(
-            $config->getOAuthApiAppKey(),
-            $config->getOAuthApiAppSecret(),
-            $config->getOAuthApiData()
-        );
+        $this->stateObject = new ArrayObject($this->getInputState());
+
+        $tokenProviderFactory = new TokenProviderFactory($config, $this->stateObject);
+        $tokenProvider = $tokenProviderFactory->create();
+        $apiFactory = new ApiFactory($logger, $tokenProvider);
+        $this->api = $apiFactory->create();
         $this->sheetProvider = new SheetProvider($this->api, $this->getConfig());
+    }
+
+    public function execute(): void
+    {
+        try {
+            parent::execute();
+        } finally {
+            $this->writeOutputStateToFile($this->stateObject->getArrayCopy());
+        }
     }
 
     public function getConfig(): Config

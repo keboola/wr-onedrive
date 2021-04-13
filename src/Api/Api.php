@@ -37,6 +37,8 @@ class Api
         504, // 504 Gateway Timeout
     ];
 
+    public const RETRY_MAX_ATTEMPTS = 14;
+
     private Graph $graphApi;
 
     private LoggerInterface $logger;
@@ -304,7 +306,7 @@ class Api
 
     private function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
     {
-        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 20000);
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 5000);
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
             if ($e instanceof ConnectException) {
@@ -328,7 +330,7 @@ class Api
             }
 
             return false;
-        });
+        }, self::RETRY_MAX_ATTEMPTS);
 
         $proxy = new RetryProxy($retryPolicy, $backOffPolicy);
         return $proxy->call(function () use ($method, $uri, $params, $body) {

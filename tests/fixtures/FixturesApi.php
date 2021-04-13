@@ -60,7 +60,7 @@ class FixturesApi
 
     public function createRetryProxy(): RetryProxy
     {
-        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 20000);
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 5000);
         $retryPolicy = new CallableRetryPolicy(function (\Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
             if ($e instanceof ConnectException) {
@@ -85,7 +85,7 @@ class FixturesApi
             }
 
             return false;
-        });
+        }, Api::RETRY_MAX_ATTEMPTS);
 
         return new RetryProxy($retryPolicy, $backOffPolicy);
     }

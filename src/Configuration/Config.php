@@ -26,7 +26,7 @@ class Config extends BaseConfig
 
     public function getBulkSize(): int
     {
-        return $this->getValue(['parameters'. 'bulkSize']);
+        return $this->getValue(['parameters', 'bulkSize']);
     }
 
     public function hasDriveId(): bool

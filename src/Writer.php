@@ -57,7 +57,7 @@ class Writer
         }
 
         // Insert rows
-        $this->api->insertRows($sheet, $this->config->getAppend(), $csv);
+        $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBulkSize());
     }
 
     private function findCsv(): SplFileInfo

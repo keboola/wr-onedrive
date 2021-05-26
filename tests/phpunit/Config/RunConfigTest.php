@@ -16,7 +16,7 @@ class RunConfigTest extends BaseConfigTest
     public function testValidConfig(array $config): void
     {
         new Config($config, new ConfigDefinition());
-        $this->addToAssertionCount(1); // Assert no error
+        $this->expectNotToPerformAssertions();
     }
 
     /**
@@ -167,6 +167,21 @@ class RunConfigTest extends BaseConfigTest
                                 'a' => 1,
                                 'b' => 'abc',
                             ],
+                        ],
+                    ],
+                ],
+            ],
+            'valid-bulk-size' => [
+                [
+                    'authorization' => $this->getValidAuthorization(),
+                    'parameters' => [
+                        'bulkSize' => 12345,
+                        'workbook' => [
+                            'path' => '/path/to/file',
+                        ],
+                        'worksheet' => [
+                            'name' => 'Sheet 1',
+                            'position' => 0,
                         ],
                     ],
                 ],

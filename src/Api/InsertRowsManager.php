@@ -22,7 +22,7 @@ class InsertRowsManager
         $this->api = $api;
     }
 
-    public function insert(Sheet $sheet, bool $append, Iterator $rows, int $bulk): void
+    public function insert(Sheet $sheet, bool $append, Iterator $rows, int $batchSize): void
     {
         // Clear
         if (!$append && !$sheet->isNew()) {
@@ -66,7 +66,7 @@ class InsertRowsManager
 
         do {
             // use_keys = false, important!
-            $values = iterator_to_array(new LimitIterator($iterator, 0, $bulk), false);
+            $values = iterator_to_array(new LimitIterator($iterator, 0, $batchSize), false);
             if (empty($values)) {
                 break;
             }

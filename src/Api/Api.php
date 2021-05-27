@@ -63,10 +63,10 @@ class Api
         return $file;
     }
 
-    public function insertRows(Sheet $sheet, bool $append, Iterator $rows, int $bulk = 30000): void
+    public function insertRows(Sheet $sheet, bool $append, Iterator $rows, int $batchSize = 30000): void
     {
         $manager = new InsertRowsManager($this->logger, $this);
-        $manager->insert($sheet, $append, $rows, $bulk);
+        $manager->insert($sheet, $append, $rows, $batchSize);
     }
 
     public function clearSheet(Sheet $sheet): void

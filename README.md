@@ -9,6 +9,7 @@ Exports spreadsheets to OneDrive
 The configuration `config.json` contains following properties in `parameters` key: 
 
 - `append` - bool (optional): if sheet exists, rows are appended to the end, default false
+- `batchSize` - int (optional): number of the rows in one batch / insert API call, default `10 000`
 - `workbook` - object (required): Workbook `XLSX` file. [Read more](#workbook).
    - One of [`driveId` and `fileId`] or `path` must be configured.
     - `driveId` - string: id of [drive resource](https://docs.microsoft.com/en-us/graph/api/resources/drive?view=graph-rest-1.0)    

@@ -22,7 +22,7 @@ class ConfigDefinition extends BaseConfigDefinition
         $parametersNode
             ->children()
                 ->booleanNode('append')->defaultValue(false)->end()
-                ->integerNode('bulkSize')->defaultValue(10000)->end()
+                ->integerNode('batchSize')->defaultValue(10000)->end()
                 // Workbook is one XLSX file
                 ->append(WorkbookDefinition::getDefinition())
                 // In one workbook are multiple worksheets, specify one

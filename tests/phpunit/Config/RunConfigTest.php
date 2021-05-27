@@ -171,11 +171,11 @@ class RunConfigTest extends BaseConfigTest
                     ],
                 ],
             ],
-            'valid-bulk-size' => [
+            'valid-batch-size' => [
                 [
                     'authorization' => $this->getValidAuthorization(),
                     'parameters' => [
-                        'bulkSize' => 12345,
+                        'batchSize' => 12345,
                         'workbook' => [
                             'path' => '/path/to/file',
                         ],

@@ -24,9 +24,9 @@ class Config extends BaseConfig
         return $this->getValue(['parameters', 'append']);
     }
 
-    public function getBulkSize(): int
+    public function getBatchSize(): int
     {
-        return $this->getValue(['parameters', 'bulkSize']);
+        return $this->getValue(['parameters', 'batchSize']);
     }
 
     public function hasDriveId(): bool

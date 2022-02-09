@@ -112,14 +112,14 @@ class WorkbooksFinder
                 // Not exists
                 case $error && strpos($error, 'AccessDenied: The sharing link no longer exists') === 0:
                     throw new ShareLinkException(sprintf(
-                        'The sharing link "%s..." no exists, or you do not have permission to access it.',
+                        'The sharing link "%s..." not exists, or you do not have permission to access it.',
                         substr($url, 0, 32)
                     ), 0, $e);
 
                 // Access denied
                 case $error && strpos($error, 'AccessDenied:') === 0:
                     throw new ShareLinkException(sprintf(
-                        'The sharing link "%s..." no exists, or you do not have permission to access it.',
+                        'The sharing link "%s..." not exists, or you do not have permission to access it.',
                         substr($url, 0, 32)
                     ), 0, $e);
 

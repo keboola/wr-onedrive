@@ -223,7 +223,7 @@ class SearchForFileTest extends BaseTest
         $notExistsUrl = 'https://keboolads.sharepoint.com/:x:/r/sites/KeboolaExtraction/Excel/invalid';
         $this->expectException(ShareLinkException::class);
         $this->expectExceptionMessageMatches(
-            '~The sharing link ".*" no exists, or you do not have permission to access it\.~',
+            '~The sharing link ".*" not exists, or you do not have permission to access it\.~',
         );
         $this->api->searchWorkbook($notExistsUrl);
     }

@@ -91,12 +91,12 @@ class Helpers
             return new BadRequestException($error, 0, $e);
         } elseif ($e->getCode() === 400) {
             // BadRequest, eg. bad fileId, "-1, Microsoft.SharePoint.Client.InvalidClientQueryException"
-            return new BadRequestException(
+            return new BadRequestException(sprintf(
                 'Bad request error. Please check configuration. ' .
-                'It can be caused by typo in an ID, or resource doesn\'t exists.',
-                $e->getCode(),
-                $e
-            );
+                'It can be caused by typo in an ID, or resource doesn\'t exists. ' .
+                'API error: %s',
+                $error ?: $e->getMessage(),
+            ), $e->getCode(), $e);
         } elseif ($e->getCode() === 504) {
             return new GatewayTimeoutException(
                 'Gateway Timeout Error. The Microsoft OneDrive API has some problems. ' .

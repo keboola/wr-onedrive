@@ -1,1 +1,1 @@
-Bad request error. Please check configuration. It can be caused by typo in an ID, or resource doesn't exists.
+Bad request error. Please check configuration. It can be caused by typo in an ID, or resource doesn't exists. API error: InvalidRequest: The provided drive id appears to be malformed, or does not represent a valid drive.

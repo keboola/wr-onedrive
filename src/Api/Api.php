@@ -349,6 +349,7 @@ class Api
         try {
             return $request->execute();
         } catch (RequestException $e) {
+            var_dump($body);
             throw Helpers::processRequestException($e);
         }
     }

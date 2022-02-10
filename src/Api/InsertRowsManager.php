@@ -24,6 +24,8 @@ class InsertRowsManager
 
     public function insert(Sheet $sheet, bool $append, Iterator $rows, int $batchSize): void
     {
+        $batchSize=1;
+
         // Clear
         if (!$append && !$sheet->isNew()) {
             $this->api->clearSheet($sheet);
@@ -64,6 +66,10 @@ class InsertRowsManager
             $iterator->next();
         }
 
+        // Skip 4000 rows
+        iterator_to_array(new LimitIterator($iterator, 0, 4000));
+        var_dump("Skipped 4000 rows ...");
+
         do {
             // use_keys = false, important!
             $values = iterator_to_array(new LimitIterator($iterator, 0, $batchSize), false);
@@ -89,6 +95,7 @@ class InsertRowsManager
                 ['values' => $values]
             );
 
+            var_dump("Row 4000+$startRow");
             $this->logger->info(sprintf('Inserted %s rows.', count($values)));
 
             $startRow = $endRow + 1;

@@ -7,6 +7,7 @@ namespace Keboola\OneDriveWriter\Api;
 use Iterator;
 use NoRewindIterator;
 use LimitIterator;
+use PHPUnit\TextUI\Help;
 use Psr\Log\LoggerInterface;
 use Keboola\OneDriveWriter\Sheet;
 use Keboola\OneDriveWriter\Api\Model\TableHeader;
@@ -70,6 +71,9 @@ class InsertRowsManager
             if (empty($values)) {
                 break;
             }
+
+            // escape
+            Helpers::escapeExcelExpressions($values);
 
             $endRow = $startRow + count($values) - 1;
             $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';

@@ -228,4 +228,19 @@ class Helpers
 
         return $columnName;
     }
+
+    /**
+     * Escape Excel expressions with "'", apostrophe, char code 39.
+     * Expression starts with "=".
+     * Example: "=foo-bar" is converted to "'=foo-bar"
+     */
+    public static function escapeExcelExpressions(array &$values): void
+    {
+        array_walk_recursive($values, function (&$value): void {
+            // Escape expression, eg. "=foo-bar" with "'", eg. "'=foo-bar"
+            if (is_string($value) && isset($value[0]) && $value[0] === '=') {
+                $value = "'" . $value;
+            }
+        });
+    }
 }

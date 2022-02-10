@@ -121,6 +121,13 @@ class HelpersTest extends TestCase
         Assert::assertSame($expected, Helpers::columnStrToInt($input));
     }
 
+    public function testEscapeExcelExpression(): void
+    {
+        $values = [['a', 'b', 'c'], ['d', '=1+1', '=foo-bar;-']];
+        Helpers::escapeExcelExpressions($values);
+        Assert::assertEquals([['a', 'b', 'c'], ['d', "'=1+1", "'=foo-bar;-"]], $values);
+    }
+
 
     public function getInputs(): array
     {

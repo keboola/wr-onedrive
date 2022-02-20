@@ -9,8 +9,6 @@ use NoRewindIterator;
 use ArrayIterator;
 use LimitIterator;
 use InvalidArgumentException;
-use GuzzleHttp\Exception\RequestException;
-use Keboola\OneDriveWriter\Api\Batch\Request;
 use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
 use Microsoft\Graph\Http\GraphResponse;

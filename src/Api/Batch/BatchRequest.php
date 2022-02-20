@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Keboola\OneDriveWriter\Api\Batch;
 
 use Iterator;
+use Keboola\OneDriveWriter\Exception\UserException;
 use NoRewindIterator;
 use ArrayIterator;
 use LimitIterator;
@@ -113,13 +114,24 @@ class BatchRequest
     {
         // Request from batch failed, status != 2xx
         if ($status < 200 || $status >= 300) {
-            throw new BatchRequestException(sprintf(
-                'Unexpected status "%d" for request "%s": %s, %s',
-                $status,
-                $request->getUri(),
-                $body['error']['code'] ?? '',
-                $body['error']['message'] ?? '',
-            ), $status);
+            $errorCode = $body['error']['code'] ?? '';
+            switch ($errorCode) {
+                case 'GenericFileOpenError':
+                    throw new UserException('OneDrive API error: The workbook cannot be opened. Make sure ' .
+                        'nobody is editing it.');
+                case 'UnknownError':
+                    throw new UserException('OneDrive API error: The service is unavailable.');
+                case 'MaxRequestDurationExceeded':
+                    throw new UserException('OneDrive API error: Request took too long.');
+                default:
+                    throw new BatchRequestException(sprintf(
+                        'Unexpected status "%d" for request "%s": %s, %s',
+                        $status,
+                        $request->getUri(),
+                        $errorCode,
+                        $body['error']['message'] ?? '',
+                    ), $status);
+            }
         }
 
         // Map response body (eg. to files)

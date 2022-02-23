@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\OneDriveWriter\Api;
 
+use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
 use Throwable;
 use Iterator;
@@ -42,6 +43,8 @@ class Api
     private Graph $graphApi;
 
     private LoggerInterface $logger;
+
+    private ?ClientInterface $httpClient = null;
 
     public function __construct(Graph $graphApi, LoggerInterface $logger)
     {
@@ -347,9 +350,14 @@ class Api
         }
 
         try {
-            return $request->execute();
+            return $request->execute($this->httpClient);
         } catch (RequestException $e) {
             throw Helpers::processRequestException($e);
         }
+    }
+
+    public function setHttpClient(ClientInterface $httpClient): void
+    {
+        $this->httpClient = $httpClient;
     }
 }

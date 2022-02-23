@@ -6,7 +6,9 @@ namespace Keboola\OneDriveWriter\Api;
 
 use InvalidArgumentException;
 use Keboola\OneDriveWriter\Exception\BadRequestException;
+use Keboola\OneDriveWriter\Exception\BatchRequestException;
 use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
+use Keboola\OneDriveWriter\Exception\UserException;
 use Normalizer;
 use GuzzleHttp\Exception\RequestException;
 use Keboola\Component\JsonHelper;
@@ -69,15 +71,22 @@ class Helpers
         return [$site, $path];
     }
 
-    public static function processRequestException(RequestException $e): \Throwable
+    public static function processRequestException(\Throwable $e): \Throwable
     {
-        $error = Helpers::getErrorFromRequestException($e);
+        $error = null;
+        if ($e instanceof RequestException) {
+            $error = Helpers::getErrorFromRequestException($e);
+        } elseif ($e instanceof BatchRequestException) {
+            $error = $e->getErrorCode();
+        }
+
         if ($error === 'AccessDenied: Could not obtain a WAC access token.') {
             $msg = 'It looks like the specified file is not in the "XLSX" Excel format. Error: "%s"';
             return new InvalidFileTypeException(sprintf($msg, $error), 0, $e);
         } elseif ($error && strpos($error, 'ItemNotFound:') === 0) {
             $msg = 'The resource could not be found. Uri: "%s"';
-            return new ResourceNotFoundException(sprintf($msg, $e->getRequest()->getUri()), 0, $e);
+            $uri = $e instanceof RequestException ? $e->getRequest()->getUri() : '';
+            return new ResourceNotFoundException(sprintf($msg, $uri), 0, $e);
         } elseif ($e->getCode() === 404) {
             // ResourceNotFound, eg. bad fileId, "-1, Microsoft.SharePoint.Client.ResourceNotFoundException"
             return new ResourceNotFoundException(
@@ -97,6 +106,13 @@ class Helpers
                 'API error: %s',
                 $error ?: $e->getMessage(),
             ), $e->getCode(), $e);
+        } elseif ($error === 'GenericFileOpenError') {
+            return new UserException('OneDrive API error: The workbook cannot be opened. Make sure ' .
+                'nobody is editing it.');
+        } elseif ($error === 'UnknownError') {
+            return new UserException('OneDrive API error: The service is unavailable.');
+        } elseif ($error === 'MaxRequestDurationExceeded') {
+            return new UserException('OneDrive API error: Request took too long.');
         } elseif ($e->getCode() === 504) {
             return new GatewayTimeoutException(
                 'Gateway Timeout Error. The Microsoft OneDrive API has some problems. ' .

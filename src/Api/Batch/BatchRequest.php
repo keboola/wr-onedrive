@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Keboola\OneDriveWriter\Api\Batch;
 
 use Iterator;
+use Keboola\OneDriveWriter\Api\Helpers;
 use NoRewindIterator;
 use ArrayIterator;
 use LimitIterator;
 use InvalidArgumentException;
-use GuzzleHttp\Exception\RequestException;
-use Keboola\OneDriveWriter\Api\Batch\Request;
 use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
 use Microsoft\Graph\Http\GraphResponse;
@@ -60,7 +59,11 @@ class BatchRequest
             $responses = $this->runBatchRequest();
             foreach ($responses as $response) {
                 do {
-                    yield from $this->processBatchResponse($response);
+                    try {
+                        yield from $this->processBatchResponse($response);
+                    } catch (BatchRequestException $e) {
+                        throw Helpers::processRequestException($e);
+                    }
                     $response = $this->getNextPage($response);
                 } while ($response !== null);
             }
@@ -121,7 +124,7 @@ class BatchRequest
                 $request->getUri(),
                 $body['error']['code'] ?? '',
                 $body['error']['message'] ?? '',
-            ), $status);
+            ), $status, null, $body['error']['code'] ?? null);
         }
 
         // Map response body (eg. to files)

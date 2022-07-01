@@ -6,6 +6,7 @@ namespace Keboola\OneDriveWriter\Api;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
+use Keboola\OneDriveWriter\Exception\UserException;
 use Throwable;
 use Iterator;
 use Psr\Log\LoggerInterface;
@@ -39,6 +40,7 @@ class Api
     ];
 
     public const RETRY_MAX_ATTEMPTS = 14;
+    public const MAX_INTERVAL = 5000;
 
     private Graph $graphApi;
 
@@ -309,7 +311,7 @@ class Api
 
     private function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
     {
-        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, 5000);
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, self::MAX_INTERVAL);
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
             if ($e instanceof ConnectException) {
@@ -332,9 +334,20 @@ class Api
                 }
             }
 
+            if ($e instanceof UserException && $e->getCode() === 429) {
+                $previous = $e->getPrevious();
+                assert($previous instanceof RequestException);
+                assert($previous->getResponse() !== null);
+                if ($previous->getResponse()->hasHeader('Retry-After')) {
+                    if ((int) $previous->getResponse()->getHeader('Retry-After')[0] > self::MAX_INTERVAL) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
             return false;
         }, self::RETRY_MAX_ATTEMPTS);
-
         $proxy = new RetryProxy($retryPolicy, $backOffPolicy);
         return $proxy->call(function () use ($method, $uri, $params, $body) {
             return $this->execute($method, $uri, $params, $body);

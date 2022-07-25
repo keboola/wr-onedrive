@@ -3,4 +3,4 @@
 /data
 /tests/fixtures/.fixturesCatalog
 *.env
-
+/.phpunit.result.cache

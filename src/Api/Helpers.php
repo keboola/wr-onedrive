@@ -120,6 +120,23 @@ class Helpers
                 $e->getCode(),
                 $e
             );
+        } elseif ($e->getCode() === 429) {
+            if ($e instanceof RequestException) {
+                assert($e->getResponse() !== null);
+                if ($e->getResponse()->hasHeader('Retry-After')) {
+                    $retryAfter = (int) $e->getResponse()->getHeader('Retry-After')[0];
+                    if ($retryAfter > Api::MAX_INTERVAL) {
+                        return new UserException(sprintf(
+                            'OneDrive API error: Too many requests. Retry-After (%d ' .
+                                'seconds) exceeded maximum retry interval (%d seconds)',
+                            $retryAfter,
+                            Api::MAX_INTERVAL
+                        ), 429, $e);
+                    }
+                }
+            }
+
+            return new UserException('OneDrive API error: Too many requests.', 429, $e);
         }
 
         return $e;

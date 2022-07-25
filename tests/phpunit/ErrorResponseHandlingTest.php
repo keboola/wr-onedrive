@@ -19,10 +19,8 @@ use PHPUnit\Framework\TestCase;
 class ErrorResponseHandlingTest extends TestCase
 {
     /**
-     * @dataProvider dataProvider
+     * @dataProvider dataProviderBatchRequest
      * @param Response[] $responses
-     * @throws \Keboola\OneDriveWriter\Exception\AccessTokenInitException
-     * @throws \Keboola\OneDriveWriter\Exception\AccessTokenRefreshException
      */
     public function testErrorResponseHandlingOnBatchRequest(array $responses, string $expectedMessage): void
     {
@@ -34,6 +32,22 @@ class ErrorResponseHandlingTest extends TestCase
         $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
         $api->setHttpClient($httpClient);
         iterator_to_array($api->getSheets('1', '1'));
+    }
+
+    /**
+     * @dataProvider dataProviderRequest
+     * @param Response[] $responses
+     */
+    public function testErrorResponseHandlingRequest(array $responses, string $expectedMessage): void
+    {
+        $this->expectException(UserException::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        $graphApi = $this->createGraphApi();
+        $api = new Api($graphApi, new Logger());
+        $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
+        $api->setHttpClient($httpClient);
+        $api->getSite('test');
     }
 
     private function createGraphApi(): Graph
@@ -55,7 +69,7 @@ class ErrorResponseHandlingTest extends TestCase
     /**
      * @return Generator<string, mixed>
      */
-    public function dataProvider(): Generator
+    public function dataProviderBatchRequest(): Generator
     {
         yield 'Workbook 500 error' => [
             'responses' => [
@@ -119,5 +133,52 @@ class ErrorResponseHandlingTest extends TestCase
                             }
                         ]
                     }', $statusCode, $errorCode, $errorMessage));
+    }
+
+    /**
+     * @return Generator<string, mixed>
+     */
+    public function dataProviderRequest(): Generator
+    {
+        yield 'Retry-After over maximum limit' => [
+            'responses' => $this->get429Responses(['Retry-After' => [Api::MAX_INTERVAL + 1]]),
+            'expectedMessage' => sprintf('OneDrive API error: Too many requests. Retry-After (%d seconds) ' .
+                'exceeded maximum retry interval (%d seconds)', Api::MAX_INTERVAL + 1, Api::MAX_INTERVAL),
+        ];
+
+        yield 'Retry-After within maximum limit' => [
+            'responses' => $this->get429Responses(['Retry-After' => [1000]], 15),
+            'expectedMessage' => 'OneDrive API error: Too many requests.',
+        ];
+
+        yield 'Too many request without Retry-After header' => [
+            'responses' => $this->get429Responses([], 15),
+            'expectedMessage' => 'OneDrive API error: Too many requests.',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $headers
+     * @return Response[]
+     */
+    private function get429Responses(array $headers, int $count = 1): array
+    {
+        return array_fill(
+            0,
+            $count,
+            new Response(429, $headers, '{
+                  "error": {
+                    "code": "TooManyRequests",
+                    "innerError": {
+                      "code": "429",
+                      "date": "2020-08-18T12:51:51",
+                      "message": "Please retry after",
+                      "request-id": "94fb3b52-452a-4535-a601-69e0a90e3aa2",
+                      "status": "429"
+                    },
+                    "message": "Please retry again later."
+                  }
+                }')
+        );
     }
 }

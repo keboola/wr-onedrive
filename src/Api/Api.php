@@ -367,6 +367,22 @@ class Api
         }
     }
 
+    public function closeSession(string $driveId, string $fileId, string $sessionId): void
+    {
+        $uri = '/drives/{driveId}/items/{fileId}/workbook/closeSession';
+        $this->post(
+            $uri,
+            [
+                'driveId' => $driveId,
+                'fileId' => $fileId,
+            ],
+            [],
+            [
+                'Workbook-Session-Id' => $sessionId,
+            ],
+        );
+    }
+
     public function searchWorkbook(string $search = ''): File
     {
         $finder = new WorkbooksFinder($this, $this->logger);

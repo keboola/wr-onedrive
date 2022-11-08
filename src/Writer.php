@@ -64,6 +64,11 @@ class Writer
 
         // Insert rows
         $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBatchSize(), $sessionId);
+
+        // Close session if exists
+        if ($sessionId) {
+            $this->api->closeSession($sheet->getDriveId(), $sheet->getFileId(), $sessionId);
+        }
     }
 
     private function findCsv(): SplFileInfo

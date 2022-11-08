@@ -6,6 +6,7 @@ namespace Keboola\OneDriveWriter\Api;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
+use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Throwable;
 use Iterator;
@@ -318,7 +319,10 @@ class Api
                 return true;
             }
 
-            if ($e instanceof RequestException || $e instanceof BatchRequestException) {
+            if ($e instanceof RequestException
+                || $e instanceof BatchRequestException
+                || $e instanceof GatewayTimeoutException
+            ) {
                 // Retry only on defined HTTP codes
                 if (in_array($e->getCode(), self::RETRY_HTTP_CODES, true)) {
                     return true;
@@ -349,7 +353,10 @@ class Api
             return false;
         }, self::RETRY_MAX_ATTEMPTS);
         $proxy = new RetryProxy($retryPolicy, $backOffPolicy);
-        return $proxy->call(function () use ($method, $uri, $params, $body) {
+        return $proxy->call(function () use ($method, $uri, $params, $body, $proxy) {
+            if ($proxy->getTryCount() > 1) {
+                $this->logger->info(sprintf('Retrying (%dx)...', $proxy->getTryCount() + 1));
+            }
             return $this->execute($method, $uri, $params, $body);
         });
     }

@@ -23,18 +23,18 @@ class InsertRowsManager
         $this->api = $api;
     }
 
-    public function insert(Sheet $sheet, bool $append, Iterator $rows, int $batchSize): void
+    public function insert(Sheet $sheet, bool $append, Iterator $rows, int $batchSize, ?string $sessionId = null): void
     {
         // Clear
         if (!$append && !$sheet->isNew()) {
-            $this->api->clearSheet($sheet);
+            $this->api->clearSheet($sheet, $sessionId);
         }
 
         // Determine offset
         $range = !$sheet->isNew() && $append ?
-            $this->api->getSheetRange($sheet) : null;
+            $this->api->getSheetRange($sheet, $sessionId) : null;
         $orgHeader = $range && !$range->isEmpty() ?
-            $this->api->getSheetHeader($sheet) : null;
+            $this->api->getSheetHeader($sheet, $sessionId) : null;
 
         if ($range && !$range->isEmpty()) {
             $startCol = Helpers::columnStrToInt($range->getStartColumn());
@@ -79,6 +79,11 @@ class InsertRowsManager
             $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
             $uri = $endpoint . '/range(address=\'{startCol}{startRow}:{endCol}{endRow}\')';
 
+            $headers = [];
+            if ($sessionId) {
+                $headers['Workbook-Session-Id'] = $sessionId;
+            }
+
             $this->api->patch(
                 $uri,
                 [
@@ -90,7 +95,8 @@ class InsertRowsManager
                     'endCol' => Helpers::columnIntToStr($endCol),
                     'endRow' => $endRow,
                 ],
-                ['values' => $values]
+                ['values' => $values],
+                $headers
             );
 
             $this->logger->info(sprintf('Inserted %s rows.', count($values)));

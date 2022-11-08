@@ -69,16 +69,27 @@ class Api
         return $file;
     }
 
-    public function insertRows(Sheet $sheet, bool $append, Iterator $rows, int $batchSize = 30000): void
-    {
+    public function insertRows(
+        Sheet $sheet,
+        bool $append,
+        Iterator $rows,
+        int $batchSize = 30000,
+        ?string $sessionId = null
+    ): void {
         $manager = new InsertRowsManager($this->logger, $this);
-        $manager->insert($sheet, $append, $rows, $batchSize);
+        $manager->insert($sheet, $append, $rows, $batchSize, $sessionId);
     }
 
-    public function clearSheet(Sheet $sheet): void
+    public function clearSheet(Sheet $sheet, ?string $sessionId = null): void
     {
         $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
         $uri = $endpoint . '/range/clear';
+
+        $headers = [];
+        if ($sessionId) {
+            $headers['Workbook-Session-Id'] = $sessionId;
+        }
+
         $this->post(
             $uri,
             [
@@ -86,7 +97,8 @@ class Api
                 'fileId' => $sheet->getFileId(),
                 'worksheetId' => $sheet->getId(),
             ],
-            [ 'applyTo' => 'all',]
+            [ 'applyTo' => 'all',],
+            $headers
         );
         $this->logger->info('Sheet cleared.');
     }
@@ -99,30 +111,52 @@ class Api
         return $body['id'];
     }
 
-    public function renameSheet(string $driveId, string $fileId, string $worksheetId, string $newName): void
-    {
+    public function renameSheet(
+        string $driveId,
+        string $fileId,
+        string $worksheetId,
+        string $newName,
+        ?string $sessionId = null
+    ): void {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
+
+        $headers = [];
+        if ($sessionId) {
+            $headers['Workbook-Session-Id'] = $sessionId;
+        }
+
         $this->patch(
             $uri,
             ['driveId' => $driveId, 'fileId' => $fileId, 'worksheetId' => $worksheetId],
-            [ 'name' => $newName]
+            [ 'name' => $newName],
+            $headers
         );
 
         $this->logger->info(sprintf('Sheet renamed to "%s".', $newName));
     }
 
-    public function getSheetHeader(Sheet $sheet): TableHeader
+    public function getSheetHeader(Sheet $sheet, ?string $sessionId = null): TableHeader
     {
         // Table header is first row in worksheet
         // Table can be shifted because we use "usedRange".
         $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
         $uri = $endpoint . '/usedRange(valuesOnly=true)/row(row=0)?$select=address,text';
+
+        $headers = [];
+        if ($sessionId) {
+            $headers['Workbook-Session-Id'] = $sessionId;
+        }
+
         $body = $this
-            ->get($uri, [
-                'driveId' => $sheet->getDriveId(),
-                'fileId' => $sheet->getFileId(),
-                'worksheetId' => $sheet->getId(),
-            ])
+            ->get(
+                $uri,
+                [
+                    'driveId' => $sheet->getDriveId(),
+                    'fileId' => $sheet->getFileId(),
+                    'worksheetId' => $sheet->getId(),
+                ],
+                $headers
+            )
             ->getBody();
 
         $header = TableHeader::from($body['address'], $body['text'][0]);
@@ -134,16 +168,26 @@ class Api
         return $header;
     }
 
-    public function getSheetRange(Sheet $sheet): TableRange
+    public function getSheetRange(Sheet $sheet, ?string $sessionId = null): TableRange
     {
         $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
         $uri = $endpoint . '/usedRange(valuesOnly=true)?$select=address';
+
+        $headers = [];
+        if ($sessionId) {
+            $headers['Workbook-Session-Id'] = $sessionId;
+        }
+
         $body = $this
-            ->get($uri, [
-                'driveId' => $sheet->getDriveId(),
-                'fileId' => $sheet->getFileId(),
-                'worksheetId' => $sheet->getId(),
-            ])
+            ->get(
+                $uri,
+                [
+                    'driveId' => $sheet->getDriveId(),
+                    'fileId' => $sheet->getFileId(),
+                    'worksheetId' => $sheet->getId(),
+                ],
+                $headers
+            )
             ->getBody();
 
         $range =  TableRange::from($body['address']);
@@ -277,6 +321,52 @@ class Api
         }
     }
 
+    public function getWorkbookSessionId(string $driveId, string $fileId): ?string
+    {
+        $uri = '/drives/{driveId}/items/{fileId}/workbook/createSession';
+        $response = $this->post(
+            $uri,
+            [
+                'driveId' => $driveId,
+                'fileId' => $fileId,
+            ],
+            [
+                'persistChanges' => true,
+            ],
+            [
+                'Prefer' => 'respond-async',
+            ],
+        );
+
+        switch ($response->getStatus()) {
+            case 201:
+                return $response->getBody()['id'];
+            case 202:
+                $responseHeader = $response->getHeaders();
+
+                $sessionLocation = current($responseHeader['Location']);
+
+                $status = 'running';
+                while ($status === 'running') {
+                    sleep(2);
+                    $session = $this->get($sessionLocation)->getBody();
+                    $status = $session['status'];
+                }
+
+                if ($status !== 'succeeded') {
+                    $this->logger->info('The workbook session could not be created.');
+                    return null;
+                }
+
+                $sessionResource = $this->get($session['resourceLocation'])->getBody();
+
+                return $sessionResource['id'];
+            default:
+                $this->logger->info('The workbook session could not be created.');
+                return null;
+        }
+    }
+
     public function searchWorkbook(string $search = ''): File
     {
         $finder = new WorkbooksFinder($this, $this->logger);
@@ -295,23 +385,28 @@ class Api
         return new BatchRequest($this);
     }
 
-    public function get(string $uri, array $params = []): GraphResponse
+    public function get(string $uri, array $params = [], array $headers = []): GraphResponse
     {
-        return $this->executeWithRetry('GET', $uri, $params);
+        return $this->executeWithRetry('GET', $uri, $params, [], $headers);
     }
 
-    public function post(string $uri, array $params = [], array $body = []): GraphResponse
+    public function post(string $uri, array $params = [], array $body = [], array $headers = []): GraphResponse
     {
-        return $this->executeWithRetry('POST', $uri, $params, $body);
+        return $this->executeWithRetry('POST', $uri, $params, $body, $headers);
     }
 
-    public function patch(string $uri, array $params = [], array $body = []): GraphResponse
+    public function patch(string $uri, array $params = [], array $body = [], array $headers = []): GraphResponse
     {
-        return $this->executeWithRetry('PATCH', $uri, $params, $body);
+        return $this->executeWithRetry('PATCH', $uri, $params, $body, $headers);
     }
 
-    private function executeWithRetry(string $method, string $uri, array $params = [], array $body = []): GraphResponse
-    {
+    private function executeWithRetry(
+        string $method,
+        string $uri,
+        array $params = [],
+        array $body = [],
+        array $headers = []
+    ): GraphResponse {
         $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, self::MAX_INTERVAL);
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
@@ -353,17 +448,27 @@ class Api
             return false;
         }, self::RETRY_MAX_ATTEMPTS);
         $proxy = new RetryProxy($retryPolicy, $backOffPolicy, $this->logger);
-        return $proxy->call(function () use ($method, $uri, $params, $body) {
-            return $this->execute($method, $uri, $params, $body);
+        return $proxy->call(function () use ($method, $uri, $params, $body, $headers) {
+            return $this->execute($method, $uri, $params, $body, $headers);
         });
     }
 
-    private function execute(string $method, string $uri, array $params = [], array $body = []): GraphResponse
-    {
+    private function execute(
+        string $method,
+        string $uri,
+        array $params = [],
+        array $body = [],
+        array $headers = []
+    ): GraphResponse {
         $uri = Helpers::replaceParamsInUri($uri, $params);
         $request = $this->graphApi->createRequest($method, $uri);
+
         if ($body) {
             $request->attachBody($body);
+        }
+
+        if ($headers) {
+            $request->addHeaders($headers);
         }
 
         try {

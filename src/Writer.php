@@ -46,18 +46,24 @@ class Writer
             return;
         }
 
+        $sessionId = $this->api->getWorkbookSessionId(
+            $sheet->getDriveId(),
+            $sheet->getFileId(),
+        );
+
         // Rename sheet
         if ($this->config->hasWorksheetName() && $this->config->getWorksheetName() !== $sheet->getName()) {
             $this->api->renameSheet(
                 $sheet->getDriveId(),
                 $sheet->getFileId(),
                 $sheet->getId(),
-                $this->config->getWorksheetName()
+                $this->config->getWorksheetName(),
+                $sessionId
             );
         }
 
         // Insert rows
-        $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBatchSize());
+        $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBatchSize(), $sessionId);
     }
 
     private function findCsv(): SplFileInfo

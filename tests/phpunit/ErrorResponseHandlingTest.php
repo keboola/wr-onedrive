@@ -12,9 +12,12 @@ use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Api\GraphApiFactory;
 use Keboola\OneDriveWriter\Auth\RefreshTokenProvider;
 use Keboola\OneDriveWriter\Auth\TokenDataManager;
+use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Microsoft\Graph\Graph;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\Test\TestLogger;
+use Throwable;
 
 class ErrorResponseHandlingTest extends TestCase
 {
@@ -37,17 +40,32 @@ class ErrorResponseHandlingTest extends TestCase
     /**
      * @dataProvider dataProviderRequest
      * @param Response[] $responses
+     * @param class-string $errorClass
      */
-    public function testErrorResponseHandlingRequest(array $responses, string $expectedMessage): void
-    {
-        $this->expectException(UserException::class);
-        $this->expectExceptionMessage($expectedMessage);
-
+    public function testErrorResponseHandlingRequest(
+        array $responses,
+        string $errorClass,
+        string $expectedMessage,
+        bool $checkIfRetries
+    ): void {
         $graphApi = $this->createGraphApi();
-        $api = new Api($graphApi, new Logger());
+        $logger = new TestLogger();
+        $api = new Api($graphApi, $logger);
         $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
         $api->setHttpClient($httpClient);
-        $api->getSite('test');
+
+        try {
+            $api->getSite('test');
+        } catch (Throwable $e) {
+            $this->assertInstanceOf($errorClass, $e);
+            $this->assertSame($expectedMessage, $e->getMessage());
+        }
+
+        if ($checkIfRetries) {
+            $this->assertTrue($logger->hasInfoThatContains(
+                sprintf('Retrying... [%dx]', Api::RETRY_MAX_ATTEMPTS - 1)
+            ));
+        }
     }
 
     private function createGraphApi(): Graph
@@ -142,18 +160,35 @@ class ErrorResponseHandlingTest extends TestCase
     {
         yield 'Retry-After over maximum limit' => [
             'responses' => $this->get429Responses(['Retry-After' => [Api::MAX_INTERVAL + 1]]),
+            'errorClass' => UserException::class,
             'expectedMessage' => sprintf('OneDrive API error: Too many requests. Retry-After (%d seconds) ' .
                 'exceeded maximum retry interval (%d seconds)', Api::MAX_INTERVAL + 1, Api::MAX_INTERVAL),
+            'checkIfRetires' => false,
         ];
 
         yield 'Retry-After within maximum limit' => [
             'responses' => $this->get429Responses(['Retry-After' => [1000]], 15),
+            'errorClass' => UserException::class,
             'expectedMessage' => 'OneDrive API error: Too many requests.',
+            'checkIfRetires' => true,
         ];
 
         yield 'Too many request without Retry-After header' => [
             'responses' => $this->get429Responses([], 15),
+            'errorClass' => UserException::class,
             'expectedMessage' => 'OneDrive API error: Too many requests.',
+            'checkIfRetires' => true,
+        ];
+
+        yield '504 Gateway Timeout' => [
+            'responses' => $this->get504Responses(15),
+            'errorClass' => GatewayTimeoutException::class,
+            'expectedMessage' => 'Gateway Timeout Error. The Microsoft OneDrive API has some problems. Please try ' .
+                'again later. API message: Server error: `GET v1.0/sites?search=test&$select=id,name` resulted in a ' .
+                '`504 Gateway Time-out` response:
+ (truncated...)
+',
+            'checkIfRetires' => true,
         ];
     }
 
@@ -173,6 +208,31 @@ class ErrorResponseHandlingTest extends TestCase
                       "code": "429",
                       "date": "2020-08-18T12:51:51",
                       "message": "Please retry after",
+                      "request-id": "94fb3b52-452a-4535-a601-69e0a90e3aa2",
+                      "status": "429"
+                    },
+                    "message": "Please retry again later."
+                  }
+                }')
+        );
+    }
+
+    /**
+     * @return Response[]
+     */
+    private function get504Responses(int $count = 1): array
+    {
+        return array_fill(
+            0,
+            $count,
+            new Response(504, [], '{
+                  "error": {
+                    "code": "MaxRequestDurationExceeded",
+                    "innerError": {
+                      "code": "504",
+                      "date": "2020-08-18T12:51:51",
+                      "message": "We couldn\'t finish what you asked us to do because it was taking too long.We ' .
+                'couldn\'t finish what you asked us to do because it was taking too long.",
                       "request-id": "94fb3b52-452a-4535-a601-69e0a90e3aa2",
                       "status": "429"
                     },

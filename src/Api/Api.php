@@ -352,11 +352,8 @@ class Api
 
             return false;
         }, self::RETRY_MAX_ATTEMPTS);
-        $proxy = new RetryProxy($retryPolicy, $backOffPolicy);
-        return $proxy->call(function () use ($method, $uri, $params, $body, $proxy) {
-            if ($proxy->getTryCount() > 1) {
-                $this->logger->info(sprintf('Retrying (%dx)...', $proxy->getTryCount() + 1));
-            }
+        $proxy = new RetryProxy($retryPolicy, $backOffPolicy, $this->logger);
+        return $proxy->call(function () use ($method, $uri, $params, $body) {
             return $this->execute($method, $uri, $params, $body);
         });
     }

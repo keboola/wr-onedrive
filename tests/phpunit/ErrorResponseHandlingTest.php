@@ -63,7 +63,7 @@ class ErrorResponseHandlingTest extends TestCase
 
         if ($checkIfRetries) {
             $this->assertTrue($logger->hasInfoThatContains(
-                sprintf('Retrying (%dx)...', Api::RETRY_MAX_ATTEMPTS)
+                sprintf('Retrying... [%dx]', Api::RETRY_MAX_ATTEMPTS - 1)
             ));
         }
     }

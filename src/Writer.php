@@ -51,6 +51,10 @@ class Writer
             $sheet->getFileId(),
         );
 
+        if ($sessionId) {
+            $this->logger->info('Write data using the session.');
+        }
+
         // Rename sheet
         if ($this->config->hasWorksheetName() && $this->config->getWorksheetName() !== $sheet->getName()) {
             $this->api->renameSheet(

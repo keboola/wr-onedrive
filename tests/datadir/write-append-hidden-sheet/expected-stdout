@@ -2,6 +2,7 @@ Searching for "%a.xlsx" in drive "%a".
 Found workbook "%a.xlsx".
 Found worksheet "Hidden Sheet 3" at position "2".
 Found input CSV file "input-file.csv".
+Write data using the session.
 Current sheet range: "A48:C50"
 Current sheet header "A48:C48": "Col_4", "Col_5", "Col_6"
 Inserted 2 rows.

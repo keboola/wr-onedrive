@@ -124,7 +124,16 @@ class Api
     public function createSheet(string $driveId, string $fileId, string $newName): string
     {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets';
-        $body = $this->post($uri, ['driveId' => $driveId, 'fileId' => $fileId], [ 'name' => $newName])->getBody();
+        $headers = [];
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
+        }
+        $body = $this->post(
+            $uri,
+            ['driveId' => $driveId, 'fileId' => $fileId],
+            [ 'name' => $newName],
+            $headers
+        )->getBody();
         $this->logger->info(sprintf('New sheet "%s" created.', $newName));
         return $body['id'];
     }

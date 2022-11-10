@@ -1,7 +1,7 @@
 Searching for "%a.xlsx" in drive "%a".
+Write data using the session.
 Found workbook "%a.xlsx".
 Found worksheet "Hidden Sheet 3" at position "2".
 Found input CSV file "input-file.csv".
-Write data using the session.
 Sheet cleared.
 Inserted 3 rows.

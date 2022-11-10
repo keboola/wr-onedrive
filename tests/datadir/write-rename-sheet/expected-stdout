@@ -1,8 +1,8 @@
 Searching for "%a.xlsx" in personal OneDrive.
+Write data using the session.
 Found workbook "%a.xlsx".
 Found worksheet "Only One Sheet" at position "0".
 Found input CSV file "input-file.csv".
-Write data using the session.
 Sheet renamed to "New Sheet Name".
 Sheet cleared.
 Inserted 3 rows.

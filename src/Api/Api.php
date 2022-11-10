@@ -6,6 +6,7 @@ namespace Keboola\OneDriveWriter\Api;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
+use Keboola\OneDriveWriter\Api\Model\WorkbookSession;
 use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Throwable;
@@ -49,10 +50,27 @@ class Api
 
     private ?ClientInterface $httpClient = null;
 
+    private ?WorkbookSession $workbookSession = null;
+
     public function __construct(Graph $graphApi, LoggerInterface $logger)
     {
         $this->graphApi = $graphApi;
         $this->logger = $logger;
+    }
+
+    public function __destruct()
+    {
+        $this->closeSession();
+    }
+
+    public function hasSessionId(): bool
+    {
+        return $this->workbookSession !== null;
+    }
+
+    public function getSessionId(): ?string
+    {
+        return $this->workbookSession ? $this->workbookSession->getSessionId() : null;
     }
 
     public function getAccountName(): string
@@ -65,6 +83,7 @@ class Api
     {
         $uploader = new FileUploader($this);
         $file = $uploader->upload($endpoint, __DIR__ . '/Fixtures/empty.xlsx');
+        $this->createWorkbookSessionId($file->getDriveId(), $file->getFileId());
         $this->logger->info(sprintf('New workbook "%s" created.', implode('/', $file->getPathname())));
         return $file;
     }
@@ -73,21 +92,20 @@ class Api
         Sheet $sheet,
         bool $append,
         Iterator $rows,
-        int $batchSize = 30000,
-        ?string $sessionId = null
+        int $batchSize = 30000
     ): void {
         $manager = new InsertRowsManager($this->logger, $this);
-        $manager->insert($sheet, $append, $rows, $batchSize, $sessionId);
+        $manager->insert($sheet, $append, $rows, $batchSize);
     }
 
-    public function clearSheet(Sheet $sheet, ?string $sessionId = null): void
+    public function clearSheet(Sheet $sheet): void
     {
         $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
         $uri = $endpoint . '/range/clear';
 
         $headers = [];
-        if ($sessionId) {
-            $headers['Workbook-Session-Id'] = $sessionId;
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
         }
 
         $this->post(
@@ -106,7 +124,16 @@ class Api
     public function createSheet(string $driveId, string $fileId, string $newName): string
     {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets';
-        $body = $this->post($uri, ['driveId' => $driveId, 'fileId' => $fileId], [ 'name' => $newName])->getBody();
+        $headers = [];
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
+        }
+        $body = $this->post(
+            $uri,
+            ['driveId' => $driveId, 'fileId' => $fileId],
+            [ 'name' => $newName],
+            $headers
+        )->getBody();
         $this->logger->info(sprintf('New sheet "%s" created.', $newName));
         return $body['id'];
     }
@@ -115,14 +142,13 @@ class Api
         string $driveId,
         string $fileId,
         string $worksheetId,
-        string $newName,
-        ?string $sessionId = null
+        string $newName
     ): void {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
 
         $headers = [];
-        if ($sessionId) {
-            $headers['Workbook-Session-Id'] = $sessionId;
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
         }
 
         $this->patch(
@@ -135,7 +161,7 @@ class Api
         $this->logger->info(sprintf('Sheet renamed to "%s".', $newName));
     }
 
-    public function getSheetHeader(Sheet $sheet, ?string $sessionId = null): TableHeader
+    public function getSheetHeader(Sheet $sheet): TableHeader
     {
         // Table header is first row in worksheet
         // Table can be shifted because we use "usedRange".
@@ -143,8 +169,8 @@ class Api
         $uri = $endpoint . '/usedRange(valuesOnly=true)/row(row=0)?$select=address,text';
 
         $headers = [];
-        if ($sessionId) {
-            $headers['Workbook-Session-Id'] = $sessionId;
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
         }
 
         $body = $this
@@ -168,14 +194,14 @@ class Api
         return $header;
     }
 
-    public function getSheetRange(Sheet $sheet, ?string $sessionId = null): TableRange
+    public function getSheetRange(Sheet $sheet): TableRange
     {
         $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
         $uri = $endpoint . '/usedRange(valuesOnly=true)?$select=address';
 
         $headers = [];
-        if ($sessionId) {
-            $headers['Workbook-Session-Id'] = $sessionId;
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
         }
 
         $body = $this
@@ -204,8 +230,12 @@ class Api
     public function getSheetName(string $driveId, string $fileId, string $worksheetId): string
     {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}?$select=name';
+        $headers = [];
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
+        }
         $body = $this
-            ->get($uri, ['driveId' => $driveId, 'fileId' => $fileId, 'worksheetId' => $worksheetId])
+            ->get($uri, ['driveId' => $driveId, 'fileId' => $fileId, 'worksheetId' => $worksheetId], $headers)
             ->getBody();
         return $body['name'];
     }
@@ -251,7 +281,11 @@ class Api
 
         // Load list of worksheets in workbook
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets?$select=id,name,position';
-        $body = $this->get($uri, ['driveId' => $driveId, 'fileId' => $fileId])->getBody();
+        $headers = [];
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
+        }
+        $body = $this->get($uri, ['driveId' => $driveId, 'fileId' => $fileId], $headers)->getBody();
 
         // Search by position
         $worksheet = null;
@@ -282,8 +316,13 @@ class Api
     {
         // Load list of worksheets in workbook
         $uri = '/drives/{driveId}/items/{fileId}/workbook/worksheets?$select=id,position,name,visibility';
+        $headers = [];
+        if ($this->workbookSession instanceof WorkbookSession) {
+            $headers['Workbook-Session-Id'] = $this->workbookSession->getSessionId();
+        }
+
         $body = $this
-            ->get($uri, ['driveId' => $driveId, 'fileId' => $fileId])
+            ->get($uri, ['driveId' => $driveId, 'fileId' => $fileId], $headers)
             ->getBody();
 
         // Map to object and load header in batch request
@@ -321,26 +360,33 @@ class Api
         }
     }
 
-    public function getWorkbookSessionId(string $driveId, string $fileId): ?string
+    public function createWorkbookSessionId(string $driveId, string $fileId): void
     {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/createSession';
-        $response = $this->post(
-            $uri,
-            [
-                'driveId' => $driveId,
-                'fileId' => $fileId,
-            ],
-            [
-                'persistChanges' => true,
-            ],
-            [
-                'Prefer' => 'respond-async',
-            ],
-        );
+
+        try {
+            $response = $this->post(
+                $uri,
+                [
+                    'driveId' => $driveId,
+                    'fileId' => $fileId,
+                ],
+                [
+                    'persistChanges' => true,
+                ],
+                [
+                    'Prefer' => 'respond-async',
+                ],
+            );
+        } catch (ResourceNotFoundException $e) {
+            throw new ResourceNotFoundException('Configured workbook XLSX file not found.', 0, $e);
+        }
 
         switch ($response->getStatus()) {
             case 201:
-                return $response->getBody()['id'];
+                $this->workbookSession = new WorkbookSession($driveId, $fileId, $response->getBody()['id']);
+                $this->logger->info('Write data using the session.');
+                return;
             case 202:
                 $responseHeader = $response->getHeaders();
 
@@ -355,38 +401,47 @@ class Api
 
                 if ($status !== 'succeeded') {
                     $this->logger->info('The workbook session could not be created.');
-                    return null;
+                    return;
                 }
 
                 $sessionResource = $this->get($session['resourceLocation'])->getBody();
 
-                return $sessionResource['id'];
+                $this->workbookSession = new WorkbookSession($driveId, $fileId, $sessionResource['id']);
+                $this->logger->info('Write data using the session.');
+                return;
             default:
                 $this->logger->info('The workbook session could not be created.');
-                return null;
         }
     }
 
-    public function closeSession(string $driveId, string $fileId, string $sessionId): void
+    public function closeSession(): void
     {
+        if (!$this->workbookSession) {
+            return;
+        }
+
         $uri = '/drives/{driveId}/items/{fileId}/workbook/closeSession';
-        $this->post(
-            $uri,
-            [
-                'driveId' => $driveId,
-                'fileId' => $fileId,
-            ],
-            [],
-            [
-                'Workbook-Session-Id' => $sessionId,
-            ],
-        );
+        try {
+            $this->post(
+                $uri,
+                [
+                    'driveId' => $this->workbookSession->getDriveId(),
+                    'fileId' => $this->workbookSession->getFileId(),
+                ],
+                [],
+                [
+                    'Workbook-Session-Id' => $this->workbookSession->getSessionId(),
+                ],
+            );
+        } catch (Throwable $e) {
+        }
     }
 
     public function searchWorkbook(string $search = ''): File
     {
         $finder = new WorkbooksFinder($this, $this->logger);
         $file = $finder->search($search);
+        $this->createWorkbookSessionId($file->getDriveId(), $file->getFileId());
         $this->logger->info(sprintf('Found workbook "%s".', $file->getName()));
         return $file;
     }

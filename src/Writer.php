@@ -46,33 +46,18 @@ class Writer
             return;
         }
 
-        $sessionId = $this->api->getWorkbookSessionId(
-            $sheet->getDriveId(),
-            $sheet->getFileId(),
-        );
-
-        if ($sessionId) {
-            $this->logger->info('Write data using the session.');
-        }
-
         // Rename sheet
         if ($this->config->hasWorksheetName() && $this->config->getWorksheetName() !== $sheet->getName()) {
             $this->api->renameSheet(
                 $sheet->getDriveId(),
                 $sheet->getFileId(),
                 $sheet->getId(),
-                $this->config->getWorksheetName(),
-                $sessionId
+                $this->config->getWorksheetName()
             );
         }
 
         // Insert rows
-        $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBatchSize(), $sessionId);
-
-        // Close session if exists
-        if ($sessionId) {
-            $this->api->closeSession($sheet->getDriveId(), $sheet->getFileId(), $sessionId);
-        }
+        $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBatchSize());
     }
 
     private function findCsv(): SplFileInfo

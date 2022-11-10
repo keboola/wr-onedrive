@@ -65,6 +65,7 @@ class SheetProvider
 
         // Get by IDS
         if ($config->hasDriveId() && $config->hasFileId()) {
+            $this->api->createWorkbookSessionId($config->getDriveId(), $config->getFileId());
             return $this->getFileByIds($config->getDriveId(), $config->getFileId());
         }
 

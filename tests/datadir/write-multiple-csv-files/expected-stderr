@@ -1,1 +1,1 @@
-Expected one CSV file, found multiple: "file2.csv", "file1.csv".
+Expected one CSV file, found multiple: "file%d.csv", "file%d.csv".

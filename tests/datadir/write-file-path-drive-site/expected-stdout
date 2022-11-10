@@ -1,7 +1,7 @@
 Searching for "%a.xlsx" in site "%a".
+Write data using the session.
 Found workbook "%a.xlsx".
 Found worksheet "Only One Sheet" at position "0".
 Found input CSV file "input-file.csv".
-Write data using the session.
 Sheet cleared.
 Inserted 3 rows.

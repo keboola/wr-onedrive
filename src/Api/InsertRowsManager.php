@@ -23,18 +23,18 @@ class InsertRowsManager
         $this->api = $api;
     }
 
-    public function insert(Sheet $sheet, bool $append, Iterator $rows, int $batchSize, ?string $sessionId = null): void
+    public function insert(Sheet $sheet, bool $append, Iterator $rows, int $batchSize): void
     {
         // Clear
         if (!$append && !$sheet->isNew()) {
-            $this->api->clearSheet($sheet, $sessionId);
+            $this->api->clearSheet($sheet);
         }
 
         // Determine offset
         $range = !$sheet->isNew() && $append ?
-            $this->api->getSheetRange($sheet, $sessionId) : null;
+            $this->api->getSheetRange($sheet) : null;
         $orgHeader = $range && !$range->isEmpty() ?
-            $this->api->getSheetHeader($sheet, $sessionId) : null;
+            $this->api->getSheetHeader($sheet) : null;
 
         if ($range && !$range->isEmpty()) {
             $startCol = Helpers::columnStrToInt($range->getStartColumn());
@@ -80,8 +80,8 @@ class InsertRowsManager
             $uri = $endpoint . '/range(address=\'{startCol}{startRow}:{endCol}{endRow}\')';
 
             $headers = [];
-            if ($sessionId) {
-                $headers['Workbook-Session-Id'] = $sessionId;
+            if ($this->api->hasSessionId()) {
+                $headers['Workbook-Session-Id'] = $this->api->getSessionId();
             }
 
             $this->api->patch(

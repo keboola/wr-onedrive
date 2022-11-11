@@ -63,16 +63,6 @@ class Api
         $this->closeSession();
     }
 
-    public function hasSessionId(): bool
-    {
-        return $this->workbookSession !== null;
-    }
-
-    public function getSessionId(): ?string
-    {
-        return $this->workbookSession ? $this->workbookSession->getSessionId() : null;
-    }
-
     public function getAccountName(): string
     {
         $response = $this->get('/me?$select=userPrincipalName')->getBody();

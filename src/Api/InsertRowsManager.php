@@ -79,11 +79,6 @@ class InsertRowsManager
             $endpoint = '/drives/{driveId}/items/{fileId}/workbook/worksheets/{worksheetId}';
             $uri = $endpoint . '/range(address=\'{startCol}{startRow}:{endCol}{endRow}\')';
 
-            $headers = [];
-            if ($this->api->hasSessionId()) {
-                $headers['Workbook-Session-Id'] = $this->api->getSessionId();
-            }
-
             $this->api->patch(
                 $uri,
                 [
@@ -95,8 +90,7 @@ class InsertRowsManager
                     'endCol' => Helpers::columnIntToStr($endCol),
                     'endRow' => $endRow,
                 ],
-                ['values' => $values],
-                $headers
+                ['values' => $values]
             );
 
             $this->logger->info(sprintf('Inserted %s rows.', count($values)));

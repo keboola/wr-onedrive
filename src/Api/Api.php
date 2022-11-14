@@ -445,6 +445,10 @@ class Api
                 if (strpos($e->getMessage(), 'EditModeCannotAcquireLockTooManyRequests') !== false) {
                     return true;
                 }
+
+                if (strpos($e->getMessage(), 'MaxRequestDurationExceeded') !== false) {
+                    return true;
+                }
             }
 
             if ($e instanceof UserException && $e->getCode() === 429) {

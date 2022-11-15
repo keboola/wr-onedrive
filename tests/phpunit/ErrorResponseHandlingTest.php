@@ -128,38 +128,21 @@ class ErrorResponseHandlingTest extends TestCase
             'checkIfRetires' => false,
         ];
 
+        $responses = [
+            $this->getLoadSheetListSuccessResponse(),
+        ];
+
+        array_push(
+            $responses,
+            ...array_fill(
+                0,
+                Api::RETRY_MAX_ATTEMPTS,
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long.")
+            )
+        );
         yield 'Request took to long 504 error' => [
-            'responses' => [
-                $this->getLoadSheetListSuccessResponse(),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
-            ],
+            'responses' => $responses,
             'expectedMessage' => 'OneDrive API error: Request took too long.',
             'checkIfRetires' => true,
         ];

@@ -287,7 +287,24 @@ class Api
         }
 
         // Load headers for worksheets in one request, sort by position
-        $worksheets = iterator_to_array($batch->execute());
+        $backOffPolicy = new ExponentialBackOffPolicy(500, 2.0, self::MAX_INTERVAL);
+        $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
+            // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
+            if ($e instanceof ConnectException) {
+                return true;
+            }
+
+            if ($e instanceof UserException && strpos($e->getMessage(), 'Request took too long') !== false) {
+                return true;
+            }
+            return false;
+        }, self::RETRY_MAX_ATTEMPTS);
+        $proxy = new RetryProxy($retryPolicy, $backOffPolicy, $this->logger);
+
+        $worksheets = $proxy->call(function () use ($batch) {
+            return iterator_to_array($batch->execute());
+        });
+
         usort($worksheets, fn(Worksheet $a, Worksheet $b) => $a->getPosition() - $b->getPosition());
         yield from $worksheets;
     }
@@ -443,10 +460,6 @@ class Api
                 }
 
                 if (strpos($e->getMessage(), 'EditModeCannotAcquireLockTooManyRequests') !== false) {
-                    return true;
-                }
-
-                if (strpos($e->getMessage(), 'MaxRequestDurationExceeded') !== false) {
                     return true;
                 }
             }

@@ -7,7 +7,6 @@ namespace Keboola\OneDriveWriter\Tests;
 use ArrayObject;
 use Generator;
 use GuzzleHttp\Psr7\Response;
-use Keboola\Component\Logger;
 use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Api\GraphApiFactory;
 use Keboola\OneDriveWriter\Auth\RefreshTokenProvider;
@@ -15,6 +14,7 @@ use Keboola\OneDriveWriter\Auth\TokenDataManager;
 use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Microsoft\Graph\Graph;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\Test\TestLogger;
 use Throwable;
@@ -25,16 +25,28 @@ class ErrorResponseHandlingTest extends TestCase
      * @dataProvider dataProviderBatchRequest
      * @param Response[] $responses
      */
-    public function testErrorResponseHandlingOnBatchRequest(array $responses, string $expectedMessage): void
-    {
-        $this->expectException(UserException::class);
-        $this->expectExceptionMessage($expectedMessage);
+    public function testErrorResponseHandlingOnBatchRequest(
+        array $responses,
+        string $expectedMessage,
+        bool $checkIfRetries
+    ): void {
+        try {
+            $graphApi = $this->createGraphApi();
+            $logger = new TestLogger();
+            $api = new Api($graphApi, $logger);
+            $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
+            $api->setHttpClient($httpClient);
+            iterator_to_array($api->getSheets('1', '1'));
+            $this->fail('Should fail');
+        } catch (UserException $exception) {
+            Assert::assertEquals($expectedMessage, $exception->getMessage());
+        }
 
-        $graphApi = $this->createGraphApi();
-        $api = new Api($graphApi, new Logger());
-        $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
-        $api->setHttpClient($httpClient);
-        iterator_to_array($api->getSheets('1', '1'));
+        if ($checkIfRetries) {
+            $this->assertTrue($logger->hasInfoThatContains(
+                sprintf('Retrying... [%dx]', Api::RETRY_MAX_ATTEMPTS - 1)
+            ));
+        }
     }
 
     /**
@@ -99,6 +111,7 @@ class ErrorResponseHandlingTest extends TestCase
                 ),
             ],
             'expectedMessage' => 'OneDrive API error: The workbook cannot be opened. Make sure nobody is editing it.',
+            'checkIfRetires' => false,
         ];
 
         yield 'Service unavailable 503 error' => [
@@ -111,15 +124,43 @@ class ErrorResponseHandlingTest extends TestCase
                 ),
             ],
             'expectedMessage' => 'OneDrive API error: The service is unavailable.',
+            'checkIfRetires' => false,
         ];
 
         yield 'Request took to long 504 error' => [
             'responses' => [
                 $this->getLoadSheetListSuccessResponse(),
                 $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
-                "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
+                $this->getBatchErrorResponse(504, 'MaxRequestDurationExceeded', "We'" .
+                    "re sorry. We couldn't finish what you asked us to do because it was taking too long."),
             ],
             'expectedMessage' => 'OneDrive API error: Request took too long.',
+            'checkIfRetires' => true,
         ];
     }
 

@@ -30,9 +30,10 @@ class ErrorResponseHandlingTest extends TestCase
         string $expectedMessage,
         bool $checkIfRetries
     ): void {
+
+        $logger = new TestLogger();
         try {
             $graphApi = $this->createGraphApi();
-            $logger = new TestLogger();
             $api = new Api($graphApi, $logger);
             $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
             $api->setHttpClient($httpClient);

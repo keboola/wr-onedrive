@@ -137,6 +137,12 @@ class Helpers
             }
 
             return new UserException('OneDrive API error: Too many requests.', 429, $e);
+        } elseif ($e->getCode() === 403) {
+            if (preg_match_all('/`([^`]+)`/', $e->getMessage(), $matches)) {
+                $message = sprintf('%s resulted in a %s', $matches[1][0], $matches[1][1]);
+                return new UserException('OneDrive API error: AccessDenied - ' . $message, 403, $e);
+            }
+            return new UserException('OneDrive API error: AccessDenied', 403, $e);
         }
 
         return $e;

@@ -12,6 +12,7 @@ use Keboola\OneDriveWriter\Exception\InvalidFileTypeException;
 use Keboola\OneDriveWriter\Exception\ResourceNotFoundException;
 use Keboola\OneDriveWriter\Exception\ShareLinkException;
 use Keboola\OneDriveWriter\Exception\UnexpectedValueException;
+use Keboola\OneDriveWriter\Exception\UserException;
 use Psr\Log\LoggerInterface;
 
 class WorkbooksFinder
@@ -106,8 +107,10 @@ class WorkbooksFinder
         // Get URL info and extract driveId, fileId
         try {
             $body = $this->api->get(sprintf('/shares/%s/driveItem', $sharingUrl))->getBody();
-        } catch (RequestException $e) {
-            $error = Helpers::getErrorFromRequestException($e);
+        } catch (RequestException|UserException $e) {
+            /** @var RequestException $exception */
+            $exception = $e instanceof UserException ? $e->getPrevious() : $e;
+            $error = Helpers::getErrorFromRequestException($exception);
             switch (true) {
                 // Not exists
                 case $error && strpos($error, 'AccessDenied: The sharing link no longer exists') === 0:

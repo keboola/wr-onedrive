@@ -215,6 +215,23 @@ class ErrorResponseHandlingTest extends TestCase
 ',
             'checkIfRetires' => true,
         ];
+
+        yield 'Access denied' => [
+            'responses' => [new Response(403, [], '{
+                "error": {
+                    "code":"accessDenied",
+                    "message":"Access denied",
+                    "innerError": {
+                        "date":"2023-03-01T13:09:38",
+                        "request-id":"0630e-452a-4535-a601-69e0a90e3aa2"
+                    }
+                }
+             }')],
+            'errorClass' => UserException::class,
+            'expectedMessage' => 'OneDrive API error: AccessDenied - GET v1.0/sites?search=test&$select=id,name ' .
+                'resulted in a 403 Forbidden',
+            'checkIfRetires' => false,
+        ];
     }
 
     /**

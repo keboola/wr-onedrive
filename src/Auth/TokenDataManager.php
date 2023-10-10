@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Keboola\OneDriveWriter\Auth;
 
 use ArrayObject;
+use Generator;
 use Keboola\Component\JsonHelper;
 use Keboola\OneDriveWriter\Exception\AccessTokenInitException;
 use League\OAuth2\Client\Token\AccessToken;
@@ -32,7 +33,7 @@ class TokenDataManager
         }
     }
 
-    public function load(): iterable
+    public function load(): Generator
     {
         // Load tokens from state.json
         $authDataJson = $this->state[self::STATE_AUTH_DATA_KEY] ?? null;

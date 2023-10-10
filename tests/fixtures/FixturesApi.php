@@ -13,6 +13,7 @@ use Keboola\OneDriveWriter\Api\Helpers;
 use Keboola\OneDriveWriter\Auth\RefreshTokenProvider;
 use Keboola\OneDriveWriter\Auth\TokenDataManager;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
+use Psr\Log\NullLogger;
 use Retry\BackOff\ExponentialBackOffPolicy;
 use Retry\Policy\CallableRetryPolicy;
 use Retry\RetryProxy;
@@ -123,7 +124,7 @@ class FixturesApi
             'refresh_token' => $refreshToken,
         ];
         $dataManager = new TokenDataManager($oauthData, new ArrayObject());
-        $tokenProvider = new RefreshTokenProvider($appId, $appSecret, $dataManager);
+        $tokenProvider = new RefreshTokenProvider($appId, $appSecret, $dataManager, new NullLogger());
         $apiFactory = new GraphApiFactory();
         return $apiFactory->create($tokenProvider->get());
     }

@@ -16,6 +16,7 @@ use Keboola\OneDriveWriter\Exception\UserException;
 use Microsoft\Graph\Graph;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Psr\Log\Test\TestLogger;
 use Throwable;
 
@@ -33,7 +34,7 @@ class ErrorResponseHandlingTest extends TestCase
 
         $logger = new TestLogger();
         try {
-            $graphApi = $this->createGraphApi();
+            $graphApi = $this->createGraphApi($logger);
             $api = new Api($graphApi, $logger);
             $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
             $api->setHttpClient($httpClient);
@@ -61,8 +62,8 @@ class ErrorResponseHandlingTest extends TestCase
         string $expectedMessage,
         bool $checkIfRetries
     ): void {
-        $graphApi = $this->createGraphApi();
         $logger = new TestLogger();
+        $graphApi = $this->createGraphApi($logger);
         $api = new Api($graphApi, $logger);
         $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
         $api->setHttpClient($httpClient);
@@ -81,7 +82,7 @@ class ErrorResponseHandlingTest extends TestCase
         }
     }
 
-    private function createGraphApi(): Graph
+    private function createGraphApi(LoggerInterface $logger): Graph
     {
         $appId = (string) getenv('OAUTH_APP_ID');
         $appSecret = (string) getenv('OAUTH_APP_SECRET');
@@ -92,7 +93,7 @@ class ErrorResponseHandlingTest extends TestCase
             'refresh_token' => $refreshToken,
         ];
         $dataManager = new TokenDataManager($oauthData, new ArrayObject());
-        $tokenProvider = new RefreshTokenProvider($appId, $appSecret, $dataManager);
+        $tokenProvider = new RefreshTokenProvider($appId, $appSecret, $dataManager, $logger);
         $apiFactory = new GraphApiFactory();
         return $apiFactory->create($tokenProvider->get());
     }

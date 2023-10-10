@@ -8,6 +8,8 @@ use Keboola\OneDriveWriter\Exception\AccessTokenRefreshException;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessTokenInterface;
+use LogicException;
+use Psr\Log\LoggerInterface;
 
 class RefreshTokenProvider implements TokenProvider
 {
@@ -22,11 +24,18 @@ class RefreshTokenProvider implements TokenProvider
 
     private TokenDataManager $dataManager;
 
-    public function __construct(string $appId, string $appSecret, TokenDataManager $dataManager)
-    {
+    private LoggerInterface $logger;
+
+    public function __construct(
+        string $appId,
+        string $appSecret,
+        TokenDataManager $dataManager,
+        LoggerInterface $logger
+    ) {
         $this->appId = $appId;
         $this->appSecret = $appSecret;
         $this->dataManager = $dataManager;
+        $this->logger = $logger;
     }
 
     public function get(): AccessTokenInterface
@@ -38,23 +47,40 @@ class RefreshTokenProvider implements TokenProvider
         $newToken = null;
 
         // Try token from stored state, and from the configuration.
-        foreach ($tokens as $token) {
-            try {
-                $newToken = $provider->getAccessToken(
-                    'refresh_token',
-                    ['refresh_token' => $token->getRefreshToken()]
-                );
-                break;
-            } catch (IdentityProviderException $e) {
-                // try next token
+        if (!$tokens->valid()) {
+            throw new AccessTokenRefreshException(
+                'Missing token in configuration or state file.'
+            );
+        } else {
+            while ($tokens->valid()) {
+                try {
+                    $newToken = $provider->getAccessToken(
+                        'refresh_token',
+                        ['refresh_token' => $tokens->current()->getRefreshToken()]
+                    );
+                    break;
+                } catch (IdentityProviderException $e) {
+                    $tokens->next();
+                    if ($tokens->valid()) {
+                        $this->logger->info(sprintf(
+                            'Microsoft OAuth API token refresh failed (%s), trying next token.',
+                            $e->getMessage()
+                        ));
+                    } else {
+                        throw new AccessTokenRefreshException(
+                            sprintf(
+                                'Microsoft OAuth API token refresh failed (%s). Please reset authorization in ' .
+                                'the extractor configuration.',
+                                $e->getMessage()
+                            )
+                        );
+                    }
+                }
             }
         }
 
-        if (!$newToken) {
-            throw new AccessTokenRefreshException(
-                'Microsoft OAuth API token refresh failed, ' .
-                'please reset authorization in the extractor configuration.'
-            );
+        if ($newToken === null) {
+            throw new LogicException('Token is null.');
         }
 
         $this->dataManager->store($newToken);

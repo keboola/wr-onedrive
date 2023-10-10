@@ -100,7 +100,8 @@ class AuthTest extends BaseTest
 
         $this->expectException(AccessTokenRefreshException::class);
         $this->expectExceptionMessage(
-            'Microsoft OAuth API token refresh failed, please reset authorization in the extractor configuration.'
+            'Microsoft OAuth API token refresh failed (invalid_grant). ' .
+            'Please reset authorization in the extractor configuration.'
         );
         $tokenProvider->get();
     }
@@ -155,7 +156,8 @@ class AuthTest extends BaseTest
 
         $this->expectException(AccessTokenRefreshException::class);
         $this->expectExceptionMessage(
-            'Microsoft OAuth API token refresh failed, please reset authorization in the extractor configuration.'
+            'Microsoft OAuth API token refresh failed (invalid_grant). ' .
+            'Please reset authorization in the extractor configuration.'
         );
         $tokenProvider->get();
     }
@@ -184,24 +186,24 @@ class AuthTest extends BaseTest
     {
         return [
             'invalid-app-id' => [
-                'Microsoft OAuth API token refresh failed, ' .
-                'please reset authorization in the extractor configuration.',
+                'Microsoft OAuth API token refresh failed (invalid_grant). ' .
+                'Please reset authorization in the extractor configuration.',
                 'invalid-app-id',
                 getenv('OAUTH_APP_SECRET'),
                 getenv('OAUTH_ACCESS_TOKEN'),
                 getenv('OAUTH_REFRESH_TOKEN'),
             ],
             'invalid-app-secret' => [
-                'Microsoft OAuth API token refresh failed, ' .
-                'please reset authorization in the extractor configuration.',
+                'Microsoft OAuth API token refresh failed (invalid_client). ' .
+                'Please reset authorization in the extractor configuration.',
                 getenv('OAUTH_APP_ID'),
                 'invalid-app-secret',
                 getenv('OAUTH_ACCESS_TOKEN'),
                 getenv('OAUTH_REFRESH_TOKEN'),
             ],
             'invalid-refresh-token' => [
-                'Microsoft OAuth API token refresh failed, ' .
-                'please reset authorization in the extractor configuration.',
+                'Microsoft OAuth API token refresh failed (invalid_grant). ' .
+                'Please reset authorization in the extractor configuration.',
                 getenv('OAUTH_APP_ID'),
                 getenv('OAUTH_APP_SECRET'),
                 getenv('OAUTH_ACCESS_TOKEN'),

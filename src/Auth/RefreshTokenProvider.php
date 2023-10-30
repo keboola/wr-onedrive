@@ -61,17 +61,21 @@ class RefreshTokenProvider implements TokenProvider
                     break;
                 } catch (IdentityProviderException $e) {
                     $tokens->next();
+                    /** @var array<string, string> $responseBody */
+                    $responseBody = $e->getResponseBody();
                     if ($tokens->valid()) {
                         $this->logger->info(sprintf(
-                            'Microsoft OAuth API token refresh failed (%s), trying next token.',
-                            $e->getMessage()
+                            'Microsoft OAuth API token refresh failed (%s: %s), trying next token.',
+                            $e->getMessage(),
+                            $responseBody['error_description'] ?? 'No error description'
                         ));
                     } else {
                         throw new AccessTokenRefreshException(
                             sprintf(
-                                'Microsoft OAuth API token refresh failed (%s). Please reset authorization in ' .
+                                'Microsoft OAuth API token refresh failed (%s: %s). Please reset authorization in ' .
                                 'the extractor configuration.',
-                                $e->getMessage()
+                                $e->getMessage(),
+                                $responseBody['error_description'] ?? 'No error description'
                             )
                         );
                     }

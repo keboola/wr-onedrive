@@ -26,14 +26,18 @@ class RefreshTokenProvider implements TokenProvider
 
     private LoggerInterface $logger;
 
+    private string $authorityUrl;
+
     public function __construct(
         string $appId,
         string $appSecret,
+        ?string $authorityUrl,
         TokenDataManager $dataManager,
         LoggerInterface $logger
     ) {
         $this->appId = $appId;
         $this->appSecret = $appSecret;
+        $this->authorityUrl = $authorityUrl ?? self::AUTHORITY_URL;
         $this->dataManager = $dataManager;
         $this->logger = $logger;
     }
@@ -96,8 +100,8 @@ class RefreshTokenProvider implements TokenProvider
         return new GenericProvider([
             'clientId' => $appId,
             'clientSecret' => $appSecret,
-            'urlAuthorize' => self::AUTHORITY_URL . self::AUTHORIZE_ENDPOINT,
-            'urlAccessToken' => self::AUTHORITY_URL . self::TOKEN_ENDPOINT,
+            'urlAuthorize' => $this->authorityUrl . self::AUTHORIZE_ENDPOINT,
+            'urlAccessToken' => $this->authorityUrl . self::TOKEN_ENDPOINT,
             'urlResourceOwnerDetails' => '',
             'scopes' => implode(' ', self::SCOPES),
         ]);

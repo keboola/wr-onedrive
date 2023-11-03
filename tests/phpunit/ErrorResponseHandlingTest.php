@@ -93,7 +93,7 @@ class ErrorResponseHandlingTest extends TestCase
             'refresh_token' => $refreshToken,
         ];
         $dataManager = new TokenDataManager($oauthData, new ArrayObject());
-        $tokenProvider = new RefreshTokenProvider($appId, $appSecret, $dataManager, $logger);
+        $tokenProvider = new RefreshTokenProvider($appId, $appSecret, null, $dataManager, $logger);
         $apiFactory = new GraphApiFactory();
         return $apiFactory->create($tokenProvider->get());
     }

@@ -85,7 +85,7 @@ abstract class BaseTest extends TestCase
                 'refresh_token' => $refreshToken,
             ];
         $dataManager = new TokenDataManager($oauthData, $state);
-        return new RefreshTokenProvider($appId, $appSecret, $dataManager, $this->logger);
+        return new RefreshTokenProvider($appId, $appSecret, null, $dataManager, $this->logger);
     }
 
     protected function checkEnvironment(array $vars): void

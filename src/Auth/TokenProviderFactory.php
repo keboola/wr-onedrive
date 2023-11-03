@@ -30,6 +30,7 @@ class TokenProviderFactory
         return new RefreshTokenProvider(
             $this->config->getOAuthApiAppKey(),
             $this->config->getOAuthApiAppSecret(),
+            $this->config->getImageParameters()['oneDriveAuthorityUrl'] ?? null,
             $tokenDataManager,
             $this->logger
         );

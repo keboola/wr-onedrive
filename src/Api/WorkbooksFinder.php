@@ -161,7 +161,7 @@ class WorkbooksFinder
 
     private static function checkFileMimeType(array $body): void
     {
-        $mimeType = $body['file']['mimeType'];
+        $mimeType = $body['file']['mimeType'] ?? 'undefined-mime-type';
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
             throw new InvalidFileTypeException(sprintf(
                 'File is not in the "XLSX" Excel format. Mime type: "%s"',

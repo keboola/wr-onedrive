@@ -108,7 +108,7 @@ class SheetProvider
         try {
             $file = $this->api->searchWorkbook($path);
             $new = false;
-        } catch (FileInDriveNotFoundException|ShareLinkException $e) {
+        } catch (FileInDriveNotFoundException $e) {
             $file = $this->api->createEmptyWorkbook($e->getEndpointUrl());
             $new = true;
         } catch (ResourceNotFoundException $e) {

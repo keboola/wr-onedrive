@@ -9,6 +9,7 @@ use Keboola\OneDriveWriter\Configuration\Config;
 use Keboola\OneDriveWriter\Exception\FileInDriveNotFoundException;
 use Keboola\OneDriveWriter\Exception\InvalidConfigException;
 use Keboola\OneDriveWriter\Exception\ResourceNotFoundException;
+use Keboola\OneDriveWriter\Exception\ShareLinkException;
 use Keboola\OneDriveWriter\Exception\WorkbookAlreadyExistsException;
 
 class SheetProvider
@@ -107,7 +108,7 @@ class SheetProvider
         try {
             $file = $this->api->searchWorkbook($path);
             $new = false;
-        } catch (FileInDriveNotFoundException $e) {
+        } catch (FileInDriveNotFoundException|ShareLinkException $e) {
             $file = $this->api->createEmptyWorkbook($e->getEndpointUrl());
             $new = true;
         } catch (ResourceNotFoundException $e) {

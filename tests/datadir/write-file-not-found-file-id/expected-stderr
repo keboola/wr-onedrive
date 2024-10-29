@@ -1,1 +1,1 @@
-Configured workbook XLSX file not found.
+Bad request error. Please check configuration. It can be caused by typo in an ID, or resource doesn't exists. API error: InvalidRequest: Invalid request

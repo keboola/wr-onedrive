@@ -43,6 +43,7 @@ class FileUploader
                     ->getGraph()
                     ->createRequest('PUT', $uploadSession->getUploadUrl())
                     ->addHeaders([
+                        'Authorization' => '',
                         'Content-Length' => $end - $start,
                         'Content-Range' => sprintf('bytes %d-%d/%d', $start, $end-1, $fileSize),
                     ])

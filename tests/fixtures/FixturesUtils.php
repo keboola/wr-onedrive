@@ -97,7 +97,7 @@ class FixturesUtils
                 } catch (Throwable $e) {
                     // Delete file, can be partially uploaded
                     if ($retry === 3) {
-                        $this->delete($driveId, $relativePath . '/' . $name);
+//                        $this->delete($driveId, $relativePath . '/' . $name);
                     }
 
                     if ($retry-- <= 0) {
@@ -143,7 +143,6 @@ class FixturesUtils
         if (!$file) {
             throw new RuntimeException(sprintf('Cannot open file "%s".', $localPath));
         }
-
         try {
             while (!feof($file)) {
                 $start = ftell($file);
@@ -155,6 +154,7 @@ class FixturesUtils
                         ->getGraph()
                         ->createRequest('PUT', $uploadSession->getUploadUrl())
                         ->addHeaders([
+                            'Authorization' => '',
                             'Content-Length' => $end - $start,
                             'Content-Range' => sprintf('bytes %d-%d/%d', $start, $end-1, $fileSize),
                         ])

@@ -97,7 +97,12 @@ class FixturesUtils
                 } catch (Throwable $e) {
                     // Delete file, can be partially uploaded
                     if ($retry === 3) {
-//                        $this->delete($driveId, $relativePath . '/' . $name);
+                        try {
+                            $url = $this->api->pathToUrl($driveId, $relativePath . '/' . $name);
+                            $this->api->delete($url);
+                        } catch (Throwable $e) {
+                            // ignore if file not exits
+                        }
                     }
 
                     if ($retry-- <= 0) {

@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Keboola\OneDriveWriter\Exception\BadRequestException;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
 use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
+use Keboola\OneDriveWriter\Exception\InvalidSessionException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Normalizer;
 use GuzzleHttp\Exception\RequestException;
@@ -98,6 +99,14 @@ class Helpers
         } elseif ($error && strpos($error, 'BadRequest: ') === 0) {
             // eg. BadRequest: Tenant does not have a SPO license.
             return new BadRequestException($error, 0, $e);
+        } elseif ($error && strpos($error, 'InvalidSession:') === 0) {
+            return new InvalidSessionException(
+                'OneDrive API session expired or is invalid. ' .
+                'The session will be recreated automatically. ' .
+                'API error: ' . $error,
+                $e->getCode(),
+                $e
+            );
         } elseif ($e->getCode() === 400) {
             // BadRequest, eg. bad fileId, "-1, Microsoft.SharePoint.Client.InvalidClientQueryException"
             return new BadRequestException(sprintf(

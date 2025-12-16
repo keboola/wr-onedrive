@@ -8,6 +8,7 @@ use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
 use Keboola\OneDriveWriter\Api\Model\WorkbookSession;
 use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
+use Keboola\OneDriveWriter\Exception\InvalidSessionException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Throwable;
 use Iterator;
@@ -444,6 +445,12 @@ class Api
         $retryPolicy = new CallableRetryPolicy(function (Throwable $e) {
             // Retry on connect exception, eg. Could not resolve host: login.microsoftonline.com
             if ($e instanceof ConnectException) {
+                return true;
+            }
+
+            if ($e instanceof InvalidSessionException) {
+                $this->workbookSession = null;
+                $this->logger->info('Session expired, will recreate and retry.');
                 return true;
             }
 

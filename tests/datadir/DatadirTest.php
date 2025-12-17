@@ -174,9 +174,11 @@ class DatadirTest extends AbstractDatadirTestCase
         }
         if ($specification->getExpectedStdout() !== null) {
             // Match format, not exact same
+            // Filter out InvalidSession retry messages (transient API errors that are automatically retried)
+            $actualOutput = $this->filterInvalidSessionRetryMessages($runProcess->getOutput());
             $this->assertStringMatchesFormat(
                 trim($specification->getExpectedStdout()),
-                trim($runProcess->getOutput()),
+                trim($actualOutput),
                 'Failed asserting stdout output'
             );
         }
@@ -209,5 +211,21 @@ class DatadirTest extends AbstractDatadirTestCase
         }
 
         return $localPath;
+    }
+
+    private function filterInvalidSessionRetryMessages(string $output): string
+    {
+        $lines = explode("\n", $output);
+        $filteredLines = array_filter($lines, function (string $line): bool {
+            // Filter out InvalidSession retry messages
+            if (strpos($line, 'Session expired, will recreate and retry.') !== false) {
+                return false;
+            }
+            if (strpos($line, 'InvalidSession:') !== false && strpos($line, 'Retrying...') !== false) {
+                return false;
+            }
+            return true;
+        });
+        return implode("\n", $filteredLines);
     }
 }

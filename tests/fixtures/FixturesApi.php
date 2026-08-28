@@ -13,6 +13,8 @@ use Keboola\OneDriveWriter\Api\Helpers;
 use Keboola\OneDriveWriter\Auth\RefreshTokenProvider;
 use Keboola\OneDriveWriter\Auth\TokenDataManager;
 use Keboola\OneDriveWriter\Exception\BatchRequestException;
+use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
+use Keboola\OneDriveWriter\Exception\UserException;
 use Psr\Log\NullLogger;
 use Retry\BackOff\ExponentialBackOffPolicy;
 use Retry\Policy\CallableRetryPolicy;
@@ -68,7 +70,12 @@ class FixturesApi
                 return true;
             }
 
-            if ($e instanceof RequestException || $e instanceof BatchRequestException) {
+            // GatewayTimeoutException is the mapped form of a 504; it is not a RequestException,
+            // so it must be listed explicitly (mirrors Api::executeWithRetry()).
+            if ($e instanceof RequestException
+                || $e instanceof BatchRequestException
+                || $e instanceof GatewayTimeoutException
+            ) {
                 // Retry only on defined HTTP codes
                 if (in_array($e->getCode(), self::RETRY_HTTP_CODES, true)) {
                     return true;
@@ -83,6 +90,11 @@ class FixturesApi
                 if (strpos($e->getMessage(), 'The resource has changed') !== false) {
                     return true;
                 }
+            }
+
+            // A 429 is mapped to UserException by Helpers::processRequestException().
+            if ($e instanceof UserException && $e->getCode() === 429) {
+                return true;
             }
 
             return false;

@@ -297,9 +297,24 @@ class Api
                 return true;
             }
 
-            if ($e instanceof UserException && strpos($e->getMessage(), 'Request took too long') !== false) {
+            // Transient batch errors that processRequestException() maps to a terminal UserException
+            // (504 -> "Request took too long", 503 UnknownError -> "The service is unavailable")
+            // lose their HTTP code, so they are matched by message here.
+            if ($e instanceof UserException && (
+                strpos($e->getMessage(), 'Request took too long') !== false
+                || strpos($e->getMessage(), 'The service is unavailable') !== false
+            )) {
                 return true;
             }
+
+            // Retry transient errors returned inside a batch sub-response. The batch envelope
+            // itself is HTTP 200, so these are never seen by the per-request retry in
+            // executeWithRetry(); without this a transient sub-response (e.g. 503
+            // FileOpenHostServiceUnavailable) would fail the whole run.
+            if ($e instanceof BatchRequestException && in_array($e->getCode(), self::RETRY_HTTP_CODES, true)) {
+                return true;
+            }
+
             return false;
         }, self::RETRY_MAX_ATTEMPTS);
         $proxy = new RetryProxy($retryPolicy, $backOffPolicy, $this->logger);

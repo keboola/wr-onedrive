@@ -54,11 +54,31 @@ class InsertRowsTest extends BaseTest
 
         // Check logs
         if ($expectedLogs !== null) {
+            // Ignore transient-retry log records (auto-retried API errors add non-deterministic lines).
+            $records = array_values(array_filter(
+                $this->logger->records,
+                fn(array $r): bool => !$this->isTransientRetryRecord($r)
+            ));
             Assert::assertSame(
                 $expectedLogs,
-                array_map(fn(array $r) => strtoupper($r['level']) . ': ' . $r['message'], $this->logger->records)
+                array_map(fn(array $r) => strtoupper($r['level']) . ': ' . $r['message'], $records)
             );
         }
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function isTransientRetryRecord(array $record): bool
+    {
+        $message = (string) $record['message'];
+        if (strpos($message, 'Retrying...') !== false) {
+            return true;
+        }
+        if (strpos($message, 'Session expired, will recreate and retry.') !== false) {
+            return true;
+        }
+        return false;
     }
 
     public function getFiles(): array

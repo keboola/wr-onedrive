@@ -174,8 +174,8 @@ class DatadirTest extends AbstractDatadirTestCase
         }
         if ($specification->getExpectedStdout() !== null) {
             // Match format, not exact same
-            // Filter out InvalidSession retry messages (transient API errors that are automatically retried)
-            $actualOutput = $this->filterInvalidSessionRetryMessages($runProcess->getOutput());
+            // Filter out transient-retry log lines (auto-retried API errors add non-deterministic output)
+            $actualOutput = $this->filterTransientRetryMessages($runProcess->getOutput());
             $this->assertStringMatchesFormat(
                 trim($specification->getExpectedStdout()),
                 trim($actualOutput),
@@ -184,9 +184,10 @@ class DatadirTest extends AbstractDatadirTestCase
         }
         if ($specification->getExpectedStderr() !== null) {
             // Match format, not exact same
+            $actualError = $this->filterTransientRetryMessages($runProcess->getErrorOutput());
             $this->assertStringMatchesFormat(
                 trim($specification->getExpectedStderr()),
-                trim($runProcess->getErrorOutput()),
+                trim($actualError),
                 'Failed asserting stderr output'
             );
         }
@@ -213,15 +214,17 @@ class DatadirTest extends AbstractDatadirTestCase
         return $localPath;
     }
 
-    private function filterInvalidSessionRetryMessages(string $output): string
+    private function filterTransientRetryMessages(string $output): string
     {
         $lines = explode("\n", $output);
         $filteredLines = array_filter($lines, function (string $line): bool {
-            // Filter out InvalidSession retry messages
+            // Session recreation notice logged before an InvalidSession retry.
             if (strpos($line, 'Session expired, will recreate and retry.') !== false) {
                 return false;
             }
-            if (strpos($line, 'InvalidSession:') !== false && strpos($line, 'Retrying...') !== false) {
+            // Any automatic retry of a transient API error (429/500/502/503/504, InvalidSession, ...).
+            // The RetryProxy logs these as "... Retrying... [Nx]", which is non-deterministic.
+            if (strpos($line, 'Retrying...') !== false) {
                 return false;
             }
             return true;

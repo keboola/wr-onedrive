@@ -92,6 +92,41 @@ class ErrorResponseHandlingTest extends TestCase
         ));
     }
 
+    public function testRetriesTransientServiceUnavailableBatchError(): void
+    {
+        // A batch sub-response 503 "UnknownError" ("service unavailable") is transient and must be
+        // retried by getSheets(), even though processRequestException() maps it to a terminal
+        // UserException. Regression for the flaky datadir test "get-worksheets-many-sheets".
+        $logger = new TestLogger();
+        $graphApi = new Graph();
+        $graphApi->setAccessToken('dummy-token');
+        $api = new Api($graphApi, $logger);
+
+        $responses = [$this->getLoadSheetListSuccessResponse()];
+        array_push(
+            $responses,
+            ...array_fill(
+                0,
+                Api::RETRY_MAX_ATTEMPTS,
+                $this->getBatchErrorResponse(503, 'UnknownError', 'The service is unavailable.')
+            )
+        );
+
+        $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
+        $api->setHttpClient($httpClient);
+
+        try {
+            iterator_to_array($api->getSheets('1', '1'));
+            $this->fail('Should fail after exhausting retries');
+        } catch (UserException $e) {
+            Assert::assertSame('OneDrive API error: The service is unavailable.', $e->getMessage());
+        }
+
+        Assert::assertTrue($logger->hasInfoThatContains(
+            sprintf('Retrying... [%dx]', Api::RETRY_MAX_ATTEMPTS - 1)
+        ));
+    }
+
     /**
      * @dataProvider dataProviderRequest
      * @param Response[] $responses
@@ -157,17 +192,21 @@ class ErrorResponseHandlingTest extends TestCase
             'checkIfRetires' => false,
         ];
 
+        $serviceUnavailableResponses = [
+            $this->getLoadSheetListSuccessResponse(),
+        ];
+        array_push(
+            $serviceUnavailableResponses,
+            ...array_fill(
+                0,
+                Api::RETRY_MAX_ATTEMPTS,
+                $this->getBatchErrorResponse(503, 'UnknownError', 'The service is unavailable.')
+            )
+        );
         yield 'Service unavailable 503 error' => [
-            'responses' => [
-                $this->getLoadSheetListSuccessResponse(),
-                $this->getBatchErrorResponse(
-                    503,
-                    'UnknownError',
-                    'The service is unavailable.'
-                ),
-            ],
+            'responses' => $serviceUnavailableResponses,
             'expectedMessage' => 'OneDrive API error: The service is unavailable.',
-            'checkIfRetires' => false,
+            'checkIfRetires' => true,
         ];
 
         $responses = [

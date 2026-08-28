@@ -90,15 +90,34 @@ jobs:
           tag_as_latest: true
       -
         name: Run tests
+        # The api/datadir suites make live Microsoft Graph calls and occasionally hit a transient
+        # 5xx that exhausts the in-code retries. Retry the whole run a few times: a transient flake
+        # passes on a later attempt, while a genuine (deterministic) failure fails every attempt and
+        # still fails the job, so real regressions are not masked.
         run: |
-          docker run \
-          -e OAUTH_APP_NAME \
-          -e OAUTH_APP_ID \
-          -e OAUTH_APP_SECRET \
-          -e OAUTH_ACCESS_TOKEN \
-          -e OAUTH_REFRESH_TOKEN \
-          -e TEST_SHAREPOINT_SITE \
-          ${{env.APP_IMAGE}} composer ci
+          attempts=3
+          for i in $(seq 1 "$attempts"); do
+            echo "composer ci (attempt $i/$attempts)"
+            # GitHub Actions runs this with 'set -e'; disable it around the call so a failed
+            # attempt is captured and retried instead of aborting the whole step.
+            set +e
+            docker run \
+            -e OAUTH_APP_NAME \
+            -e OAUTH_APP_ID \
+            -e OAUTH_APP_SECRET \
+            -e OAUTH_ACCESS_TOKEN \
+            -e OAUTH_REFRESH_TOKEN \
+            -e TEST_SHAREPOINT_SITE \
+            ${{env.APP_IMAGE}} composer ci
+            code=$?
+            set -e
+            if [ "$code" -eq 0 ]; then
+              exit 0
+            fi
+            echo "Attempt $i failed with exit code $code."
+          done
+          echo "composer ci failed after $attempts attempts."
+          exit 1
 
   tests-in-kbc:
     needs: build

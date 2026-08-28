@@ -297,7 +297,13 @@ class Api
                 return true;
             }
 
-            if ($e instanceof UserException && strpos($e->getMessage(), 'Request took too long') !== false) {
+            // Transient batch errors that processRequestException() maps to a terminal UserException
+            // (504 -> "Request took too long", 503 UnknownError -> "The service is unavailable")
+            // lose their HTTP code, so they are matched by message here.
+            if ($e instanceof UserException && (
+                strpos($e->getMessage(), 'Request took too long') !== false
+                || strpos($e->getMessage(), 'The service is unavailable') !== false
+            )) {
                 return true;
             }
 

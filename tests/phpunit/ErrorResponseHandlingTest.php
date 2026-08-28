@@ -11,6 +11,7 @@ use Keboola\OneDriveWriter\Api\Api;
 use Keboola\OneDriveWriter\Api\GraphApiFactory;
 use Keboola\OneDriveWriter\Auth\RefreshTokenProvider;
 use Keboola\OneDriveWriter\Auth\TokenDataManager;
+use Keboola\OneDriveWriter\Exception\BatchRequestException;
 use Keboola\OneDriveWriter\Exception\GatewayTimeoutException;
 use Keboola\OneDriveWriter\Exception\UserException;
 use Microsoft\Graph\Graph;
@@ -49,6 +50,46 @@ class ErrorResponseHandlingTest extends TestCase
                 sprintf('Retrying... [%dx]', Api::RETRY_MAX_ATTEMPTS - 1)
             ));
         }
+    }
+
+    public function testRetriesTransientBatchSubResponseError(): void
+    {
+        // A transient 5xx returned inside a batch sub-response (the batch envelope itself is
+        // HTTP 200) must be retried, not fail immediately. Regression for the datadir test
+        // "get-worksheets-many-sheets", where a "503 FileOpenHostServiceUnavailable" sub-response
+        // used to hard-fail the whole run.
+        $logger = new TestLogger();
+        $graphApi = new Graph();
+        $graphApi->setAccessToken('dummy-token');
+        $api = new Api($graphApi, $logger);
+
+        $responses = [$this->getLoadSheetListSuccessResponse()];
+        array_push(
+            $responses,
+            ...array_fill(
+                0,
+                Api::RETRY_MAX_ATTEMPTS,
+                $this->getBatchErrorResponse(
+                    503,
+                    'FileOpenHostServiceUnavailable',
+                    'We ran into a problem completing your request.'
+                )
+            )
+        );
+
+        $httpClient = HttpClientMockBuilder::create()->setResponses($responses)->getHttpClient();
+        $api->setHttpClient($httpClient);
+
+        try {
+            iterator_to_array($api->getSheets('1', '1'));
+            $this->fail('Should fail after exhausting retries');
+        } catch (BatchRequestException $e) {
+            Assert::assertSame(503, $e->getCode());
+        }
+
+        Assert::assertTrue($logger->hasInfoThatContains(
+            sprintf('Retrying... [%dx]', Api::RETRY_MAX_ATTEMPTS - 1)
+        ));
     }
 
     /**

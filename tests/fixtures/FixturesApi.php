@@ -92,8 +92,18 @@ class FixturesApi
                 }
             }
 
-            // A 429 is mapped to UserException by Helpers::processRequestException().
+            // A 429 is mapped to UserException by Helpers::processRequestException(). Mirror
+            // Api::executeWithRetry() exactly: do NOT retry when the upstream Retry-After exceeds
+            // MAX_INTERVAL, otherwise the live tests could retry far longer than the component does.
             if ($e instanceof UserException && $e->getCode() === 429) {
+                $previous = $e->getPrevious();
+                assert($previous instanceof RequestException);
+                assert($previous->getResponse() !== null);
+                if ($previous->getResponse()->hasHeader('Retry-After')) {
+                    if ((int) $previous->getResponse()->getHeader('Retry-After')[0] > Api::MAX_INTERVAL) {
+                        return false;
+                    }
+                }
                 return true;
             }
 

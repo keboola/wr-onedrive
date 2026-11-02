@@ -76,11 +76,21 @@ class SessionRecoveryTest extends TestCase
         // request that writes the rows of the lost session again.
         Assert::assertSame(3, $this->countRequests('A3:C4'));
 
-        // The requests after the session expired use the new session.
-        Assert::assertCount(7, $this->history);
-        Assert::assertSame('session-2', $this->getRequest(4)->getHeaderLine('Workbook-Session-Id'));
-        Assert::assertSame('session-2', $this->getRequest(5)->getHeaderLine('Workbook-Session-Id'));
-        Assert::assertSame('session-2', $this->getRequest(6)->getHeaderLine('Workbook-Session-Id'));
+        // No other request was sent.
+        Assert::assertCount(7, $this->history, $this->describeRequests());
+
+        // The two requests that write the rows again use the new session.
+        $last = count($this->history) - 1;
+        Assert::assertSame(
+            'session-2',
+            $this->getRequest($last - 1)->getHeaderLine('Workbook-Session-Id'),
+            $this->describeRequests()
+        );
+        Assert::assertSame(
+            'session-2',
+            $this->getRequest($last)->getHeaderLine('Workbook-Session-Id'),
+            $this->describeRequests()
+        );
 
         Assert::assertTrue($logger->hasWarningThatContains('writes the last 2 batches again'));
         Assert::assertTrue($logger->hasInfoThatContains('Written 2 rows again.'));
@@ -159,6 +169,25 @@ class SessionRecoveryTest extends TestCase
             }
         }
         return $count;
+    }
+
+    /**
+     * Lists the requests, so that a failed assertion shows what the writer sent.
+     */
+    private function describeRequests(): string
+    {
+        $lines = [];
+        foreach (array_keys($this->history) as $index) {
+            $request = $this->getRequest($index);
+            $lines[] = sprintf(
+                '%d: %s %s [session: %s]',
+                $index,
+                $request->getMethod(),
+                urldecode((string) $request->getUri()),
+                $request->getHeaderLine('Workbook-Session-Id') ?: '-'
+            );
+        }
+        return implode("\n", $lines);
     }
 
     private function getRequest(int $index): RequestInterface

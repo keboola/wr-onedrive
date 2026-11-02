@@ -222,6 +222,7 @@ class DatadirTest extends AbstractDatadirTestCase
             // Both depend on when Microsoft invalidates the session, so they are not deterministic.
             if (strpos($line, 'Session expired') !== false
                 || strpos($line, 'The workbook session expired') !== false
+                || strpos($line, 'A new session') !== false
                 || strpos($line, 'rows again.') !== false
             ) {
                 return false;

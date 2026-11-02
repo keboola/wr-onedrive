@@ -61,6 +61,8 @@ class Api
 
     private bool $creatingSession = false;
 
+    private bool $createSessionBeforeNextRequest = false;
+
     public function __construct(Graph $graphApi, LoggerInterface $logger)
     {
         $this->graphApi = $graphApi;
@@ -434,20 +436,35 @@ class Api
     }
 
     /**
-     * Drops the invalid session and creates a new one, so the retried request uses a valid session.
+     * Drops the invalid session. The next request creates a new session.
+     *
+     * The retry policy can evaluate the same error more than once, so this method must
+     * change the state only one time for one lost session.
      */
     private function onInvalidSession(): void
     {
-        $this->workbookSession = null;
-        $this->sessionLostCount++;
-
-        // Do not create a session recursively, if the createSession request itself fails.
-        if ($this->creatingSession) {
+        if ($this->workbookSession === null) {
             return;
         }
 
+        $this->workbookSession = null;
+        $this->sessionLostCount++;
+        $this->createSessionBeforeNextRequest = true;
+        $this->logger->info('Session expired. A new session will be created.');
+    }
+
+    /**
+     * Creates a new session after the API invalidated the previous one.
+     */
+    private function createSessionIfNeeded(): void
+    {
+        // Do not create a session recursively, when the createSession request runs.
+        if (!$this->createSessionBeforeNextRequest || $this->creatingSession) {
+            return;
+        }
+
+        $this->createSessionBeforeNextRequest = false;
         if ($this->sessionDriveId === null || $this->sessionFileId === null) {
-            $this->logger->info('Session expired. The writer continues without a session.');
             return;
         }
 
@@ -456,13 +473,12 @@ class Api
             $this->createWorkbookSessionId(
                 $this->sessionDriveId,
                 $this->sessionFileId,
-                'Session expired. A new session was created.'
+                'A new session was created.'
             );
         } catch (Throwable $e) {
-            // Requests without a session are saved by the API immediately, so this is safe.
+            // The API saves a request that uses no session immediately, so this is safe.
             $this->logger->info(sprintf(
-                'Session expired and a new session could not be created (%s). ' .
-                'The writer continues without a session.',
+                'A new session could not be created (%s). The writer continues without a session.',
                 $e->getMessage()
             ));
         } finally {
@@ -588,6 +604,8 @@ class Api
         array $body = [],
         array $headers = []
     ): GraphResponse {
+        $this->createSessionIfNeeded();
+
         $uri = Helpers::replaceParamsInUri($uri, $params);
         $request = $this->graphApi->createRequest($method, $uri);
 

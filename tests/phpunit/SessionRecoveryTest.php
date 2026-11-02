@@ -49,6 +49,10 @@ class SessionRecoveryTest extends TestCase
             // batch 1 and batch 2, written again in the new session
             new Response(200, [], '{}'),
             new Response(200, [], '{}'),
+            // Spare responses. The assertions below count the requests.
+            new Response(200, [], '{}'),
+            new Response(200, [], '{}'),
+            new Response(200, [], '{}'),
         ]);
 
         $api->createWorkbookSessionId('drive-1', 'file-1');
@@ -60,17 +64,21 @@ class SessionRecoveryTest extends TestCase
             fn(): Iterator => $this->createRows()
         );
 
-        // Every mocked response was used: the two batches were written again.
+        // One session at the start, and one session after the API invalidated it.
+        // The retry policy can evaluate the same error more than once, so this also
+        // checks that one lost session creates one new session.
+        Assert::assertSame(2, $this->countRequests('createSession'));
+
+        // Batch 1 is written two times: in the lost session, and in the new session.
+        Assert::assertSame(2, $this->countRequests('A1:C2'));
+
+        // Batch 2 is written three times: the request that failed, the retry, and the
+        // request that writes the rows of the lost session again.
+        Assert::assertSame(3, $this->countRequests('A3:C4'));
+
+        // The requests after the session expired use the new session.
         Assert::assertCount(7, $this->history);
-
-        // A new session was created, and the following requests use it.
-        Assert::assertSame('POST', $this->getRequest(3)->getMethod());
-        Assert::assertStringContainsString('createSession', (string) $this->getRequest(3)->getUri());
         Assert::assertSame('session-2', $this->getRequest(4)->getHeaderLine('Workbook-Session-Id'));
-
-        // The batches of the expired session are written again, to the same addresses.
-        Assert::assertStringContainsString('A1:C2', urldecode((string) $this->getRequest(5)->getUri()));
-        Assert::assertStringContainsString('A3:C4', urldecode((string) $this->getRequest(6)->getUri()));
         Assert::assertSame('session-2', $this->getRequest(5)->getHeaderLine('Workbook-Session-Id'));
         Assert::assertSame('session-2', $this->getRequest(6)->getHeaderLine('Workbook-Session-Id'));
 
@@ -86,6 +94,10 @@ class SessionRecoveryTest extends TestCase
             new Response(200, [], '{}'),
             $this->invalidSessionResponse(),
             new Response(201, [], (string) json_encode(['id' => 'session-2'])),
+            new Response(200, [], '{}'),
+            // Spare responses, so that a missing response cannot hide the expected error.
+            new Response(200, [], '{}'),
+            new Response(200, [], '{}'),
             new Response(200, [], '{}'),
         ]);
 
@@ -136,6 +148,17 @@ class SessionRecoveryTest extends TestCase
         $api->setHttpClient(new Client(['handler' => $handlerStack]));
 
         return $api;
+    }
+
+    private function countRequests(string $uriPart): int
+    {
+        $count = 0;
+        foreach (array_keys($this->history) as $index) {
+            if (strpos(urldecode((string) $this->getRequest($index)->getUri()), $uriPart) !== false) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     private function getRequest(int $index): RequestInterface

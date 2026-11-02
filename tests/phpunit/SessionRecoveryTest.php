@@ -84,12 +84,12 @@ class SessionRecoveryTest extends TestCase
         // in the recorded PSR-7 request. The request order above is what this test checks.)
         $last = count($this->history) - 1;
         Assert::assertStringContainsString(
-            "A1:C2",
+            'A1:C2',
             urldecode((string) $this->getRequest($last - 1)->getUri()),
             $this->describeRequests()
         );
         Assert::assertStringContainsString(
-            "A3:C4",
+            'A3:C4',
             urldecode((string) $this->getRequest($last)->getUri()),
             $this->describeRequests()
         );

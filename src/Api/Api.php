@@ -53,6 +53,14 @@ class Api
 
     private ?WorkbookSession $workbookSession = null;
 
+    private ?string $sessionDriveId = null;
+
+    private ?string $sessionFileId = null;
+
+    private int $sessionLostCount = 0;
+
+    private bool $creatingSession = false;
+
     public function __construct(Graph $graphApi, LoggerInterface $logger)
     {
         $this->graphApi = $graphApi;
@@ -79,14 +87,19 @@ class Api
         return $file;
     }
 
+    /**
+     * @param callable|null $rowsFactory Creates a new iterator over the same source rows.
+     *     It is used to write rows again if the workbook session expires. See InsertRowsManager.
+     */
     public function insertRows(
         Sheet $sheet,
         bool $append,
         Iterator $rows,
-        int $batchSize = 30000
+        int $batchSize = 30000,
+        ?callable $rowsFactory = null
     ): void {
         $manager = new InsertRowsManager($this->logger, $this);
-        $manager->insert($sheet, $append, $rows, $batchSize);
+        $manager->insert($sheet, $append, $rows, $batchSize, $rowsFactory);
     }
 
     public function clearSheet(Sheet $sheet): void
@@ -342,9 +355,16 @@ class Api
         }
     }
 
-    public function createWorkbookSessionId(string $driveId, string $fileId): void
-    {
+    public function createWorkbookSessionId(
+        string $driveId,
+        string $fileId,
+        string $successMessage = 'Write data using the session.'
+    ): void {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/createSession';
+
+        // Store the ids, so the session can be created again if it expires.
+        $this->sessionDriveId = $driveId;
+        $this->sessionFileId = $fileId;
 
         try {
             $response = $this->post(
@@ -367,7 +387,7 @@ class Api
         switch ($response->getStatus()) {
             case 201:
                 $this->workbookSession = new WorkbookSession($driveId, $fileId, $response->getBody()['id']);
-                $this->logger->info('Write data using the session.');
+                $this->logger->info($successMessage);
                 return;
             case 202:
                 $responseHeader = $response->getHeaders();
@@ -389,10 +409,64 @@ class Api
                 $sessionResource = $this->get($session['resourceLocation'])->getBody();
 
                 $this->workbookSession = new WorkbookSession($driveId, $fileId, $sessionResource['id']);
-                $this->logger->info('Write data using the session.');
+                $this->logger->info($successMessage);
                 return;
             default:
                 $this->logger->info('The workbook session could not be created.');
+        }
+    }
+
+    /**
+     * Number of workbook sessions that the API invalidated during this run.
+     *
+     * Microsoft can discard changes that it accepted in a session that later becomes invalid.
+     * A caller that writes data compares this value before and after each write. If the value
+     * changed, the caller must write the affected rows again. See InsertRowsManager.
+     */
+    public function getSessionLostCount(): int
+    {
+        return $this->sessionLostCount;
+    }
+
+    public function hasSession(): bool
+    {
+        return $this->workbookSession instanceof WorkbookSession;
+    }
+
+    /**
+     * Drops the invalid session and creates a new one, so the retried request uses a valid session.
+     */
+    private function onInvalidSession(): void
+    {
+        $this->workbookSession = null;
+        $this->sessionLostCount++;
+
+        // Do not create a session recursively, if the createSession request itself fails.
+        if ($this->creatingSession) {
+            return;
+        }
+
+        if ($this->sessionDriveId === null || $this->sessionFileId === null) {
+            $this->logger->info('Session expired. The writer continues without a session.');
+            return;
+        }
+
+        $this->creatingSession = true;
+        try {
+            $this->createWorkbookSessionId(
+                $this->sessionDriveId,
+                $this->sessionFileId,
+                'Session expired. A new session was created.'
+            );
+        } catch (Throwable $e) {
+            // Requests without a session are saved by the API immediately, so this is safe.
+            $this->logger->info(sprintf(
+                'Session expired and a new session could not be created (%s). ' .
+                'The writer continues without a session.',
+                $e->getMessage()
+            ));
+        } finally {
+            $this->creatingSession = false;
         }
     }
 
@@ -464,8 +538,7 @@ class Api
             }
 
             if ($e instanceof InvalidSessionException) {
-                $this->workbookSession = null;
-                $this->logger->info('Session expired, will recreate and retry.');
+                $this->onInvalidSession();
                 return true;
             }
 

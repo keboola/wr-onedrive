@@ -56,8 +56,16 @@ class Writer
             );
         }
 
-        // Insert rows
-        $this->api->insertRows($sheet, $this->config->getAppend(), $csv, $this->config->getBatchSize());
+        // Insert rows.
+        // The factory lets the writer read the rows again, if the workbook session expires
+        // and rows must be written again. See InsertRowsManager.
+        $this->api->insertRows(
+            $sheet,
+            $this->config->getAppend(),
+            $csv,
+            $this->config->getBatchSize(),
+            fn(): CsvReader => new CsvReader($file->getPathname())
+        );
     }
 
     private function findCsv(): SplFileInfo

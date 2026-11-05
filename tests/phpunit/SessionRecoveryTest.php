@@ -42,11 +42,9 @@ class SessionRecoveryTest extends TestCase
             new Response(200, [], '{}'),
             // batch 2 (rows 3-4) - the session is invalid
             $this->invalidSessionResponse(),
-            // createSession, after the session expired
-            new Response(201, [], (string) json_encode(['id' => 'session-2'])),
-            // batch 2, written again by the retry
+            // batch 2, written again by the retry, without a session
             new Response(200, [], '{}'),
-            // batch 1 and batch 2, written again in the new session
+            // batch 1 and batch 2, written again without a session
             new Response(200, [], '{}'),
             new Response(200, [], '{}'),
             // Spare responses. The assertions below count the requests.
@@ -64,24 +62,21 @@ class SessionRecoveryTest extends TestCase
             fn(): Iterator => $this->createRows()
         );
 
-        // One session at the start, and one session after the API invalidated it.
-        // The retry policy can evaluate the same error more than once, so this also
-        // checks that one lost session creates one new session.
-        Assert::assertSame(2, $this->countRequests('createSession'));
+        // No new session is created: a new session could expire again and discard more rows.
+        Assert::assertSame(1, $this->countRequests('createSession'), $this->describeRequests());
+        Assert::assertFalse($api->hasSession());
 
-        // Batch 1 is written two times: in the lost session, and in the new session.
-        Assert::assertSame(2, $this->countRequests('A1:C2'));
+        // Batch 1 is written two times: in the lost session, and again without a session.
+        Assert::assertSame(2, $this->countRequests('A1:C2'), $this->describeRequests());
 
         // Batch 2 is written three times: the request that failed, the retry, and the
         // request that writes the rows of the lost session again.
-        Assert::assertSame(3, $this->countRequests('A3:C4'));
+        Assert::assertSame(3, $this->countRequests('A3:C4'), $this->describeRequests());
 
         // No other request was sent.
-        Assert::assertCount(7, $this->history, $this->describeRequests());
+        Assert::assertCount(6, $this->history, $this->describeRequests());
 
-        // The rows of the lost session are written again after the new session was created.
-        // (The session header is set through the Guzzle request options, so it is not visible
-        // in the recorded PSR-7 request. The request order above is what this test checks.)
+        // The rows of the lost session are written again at the end.
         $last = count($this->history) - 1;
         Assert::assertStringContainsString(
             'A1:C2',
@@ -96,6 +91,7 @@ class SessionRecoveryTest extends TestCase
 
         Assert::assertTrue($logger->hasWarningThatContains('writes the last 2 batches again'));
         Assert::assertTrue($logger->hasInfoThatContains('Written 2 rows again.'));
+        Assert::assertTrue($logger->hasInfoThatContains('The writer continues without a session.'));
     }
 
     public function testJobFailsIfRowsCannotBeWrittenAgain(): void
@@ -105,7 +101,6 @@ class SessionRecoveryTest extends TestCase
             new Response(201, [], (string) json_encode(['id' => 'session-1'])),
             new Response(200, [], '{}'),
             $this->invalidSessionResponse(),
-            new Response(201, [], (string) json_encode(['id' => 'session-2'])),
             new Response(200, [], '{}'),
             // Spare responses, so that a missing response cannot hide the expected error.
             new Response(200, [], '{}'),

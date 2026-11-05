@@ -106,9 +106,9 @@ class InsertRowsManager
 
             $unconfirmedBatches[] = ['startRow' => $startRow, 'endRow' => $endRow, 'count' => count($values)];
 
-            // The write above can invalidate the session. In that case the API created a new
-            // session and wrote this batch again, but the batches that it accepted in the lost
-            // session can be missing in the file, so the writer writes them again.
+            // The write above can invalidate the session. In that case the API wrote this batch
+            // again without a session, but the batches that it accepted in the lost session can
+            // be missing in the file, so the writer writes them again.
             if ($this->api->getSessionLostCount() !== $sessionLostCount) {
                 $this->repairLostSession($sheet, $startCol, $endCol, $unconfirmedBatches, $skippedRows, $rowsFactory);
                 $sessionLostCount = $this->api->getSessionLostCount();

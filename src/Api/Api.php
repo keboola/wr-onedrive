@@ -53,15 +53,7 @@ class Api
 
     private ?WorkbookSession $workbookSession = null;
 
-    private ?string $sessionDriveId = null;
-
-    private ?string $sessionFileId = null;
-
     private int $sessionLostCount = 0;
-
-    private bool $creatingSession = false;
-
-    private bool $createSessionBeforeNextRequest = false;
 
     public function __construct(Graph $graphApi, LoggerInterface $logger)
     {
@@ -357,16 +349,9 @@ class Api
         }
     }
 
-    public function createWorkbookSessionId(
-        string $driveId,
-        string $fileId,
-        string $successMessage = 'Write data using the session.'
-    ): void {
+    public function createWorkbookSessionId(string $driveId, string $fileId): void
+    {
         $uri = '/drives/{driveId}/items/{fileId}/workbook/createSession';
-
-        // Store the ids, so the session can be created again if it expires.
-        $this->sessionDriveId = $driveId;
-        $this->sessionFileId = $fileId;
 
         try {
             $response = $this->post(
@@ -389,7 +374,7 @@ class Api
         switch ($response->getStatus()) {
             case 201:
                 $this->workbookSession = new WorkbookSession($driveId, $fileId, $response->getBody()['id']);
-                $this->logger->info($successMessage);
+                $this->logger->info('Write data using the session.');
                 return;
             case 202:
                 $responseHeader = $response->getHeaders();
@@ -411,7 +396,7 @@ class Api
                 $sessionResource = $this->get($session['resourceLocation'])->getBody();
 
                 $this->workbookSession = new WorkbookSession($driveId, $fileId, $sessionResource['id']);
-                $this->logger->info($successMessage);
+                $this->logger->info('Write data using the session.');
                 return;
             default:
                 $this->logger->info('The workbook session could not be created.');
@@ -436,8 +421,10 @@ class Api
     }
 
     /**
-     * Drops the invalid session. The next request creates a new session.
+     * Drops the invalid session. The writer continues without a session.
      *
+     * The API saves a request that uses no session immediately, so no later write can be
+     * discarded. A new session could expire again and discard more rows.
      * The retry policy can evaluate the same error more than once, so this method must
      * change the state only one time for one lost session.
      */
@@ -449,41 +436,7 @@ class Api
 
         $this->workbookSession = null;
         $this->sessionLostCount++;
-        $this->createSessionBeforeNextRequest = true;
-        $this->logger->info('Session expired. A new session will be created.');
-    }
-
-    /**
-     * Creates a new session after the API invalidated the previous one.
-     */
-    private function createSessionIfNeeded(): void
-    {
-        // Do not create a session recursively, when the createSession request runs.
-        if (!$this->createSessionBeforeNextRequest || $this->creatingSession) {
-            return;
-        }
-
-        $this->createSessionBeforeNextRequest = false;
-        if ($this->sessionDriveId === null || $this->sessionFileId === null) {
-            return;
-        }
-
-        $this->creatingSession = true;
-        try {
-            $this->createWorkbookSessionId(
-                $this->sessionDriveId,
-                $this->sessionFileId,
-                'A new session was created.'
-            );
-        } catch (Throwable $e) {
-            // The API saves a request that uses no session immediately, so this is safe.
-            $this->logger->info(sprintf(
-                'A new session could not be created (%s). The writer continues without a session.',
-                $e->getMessage()
-            ));
-        } finally {
-            $this->creatingSession = false;
-        }
+        $this->logger->info('Session expired. The writer continues without a session.');
     }
 
     public function closeSession(): void
@@ -604,8 +557,6 @@ class Api
         array $body = [],
         array $headers = []
     ): GraphResponse {
-        $this->createSessionIfNeeded();
-
         $uri = Helpers::replaceParamsInUri($uri, $params);
         $request = $this->graphApi->createRequest($method, $uri);
 

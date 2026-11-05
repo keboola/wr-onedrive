@@ -218,8 +218,13 @@ class DatadirTest extends AbstractDatadirTestCase
     {
         $lines = explode("\n", $output);
         $filteredLines = array_filter($lines, function (string $line): bool {
-            // Session recreation notice logged before an InvalidSession retry.
-            if (strpos($line, 'Session expired, will recreate and retry.') !== false) {
+            // Session expiry notices, and the rows written again after an expiry.
+            // Both depend on when Microsoft invalidates the session, so they are not deterministic.
+            if (strpos($line, 'Session expired') !== false
+                || strpos($line, 'The workbook session expired') !== false
+                || strpos($line, 'A new session') !== false
+                || strpos($line, 'rows again.') !== false
+            ) {
                 return false;
             }
             // Any automatic retry of a transient API error (429/500/502/503/504, InvalidSession, ...).

@@ -10,6 +10,14 @@ WORKDIR /code/
 COPY docker/php-prod.ini /usr/local/etc/php/php.ini
 COPY docker/composer-install.sh /tmp/composer-install.sh
 
+# Debian 11 (bullseye) is end of life, so deb.debian.org no longer serves its packages.
+# They are on archive.debian.org, which has no "Valid-Until" guarantee.
+RUN sed -i -e 's|deb.debian.org/debian-security|archive.debian.org/debian-security|g' \
+        -e 's|deb.debian.org/debian|archive.debian.org/debian|g' \
+        -e 's|security.debian.org|archive.debian.org/debian-security|g' \
+        /etc/apt/sources.list \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/10no-check-valid-until
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         locales \

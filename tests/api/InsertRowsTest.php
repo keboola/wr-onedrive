@@ -43,7 +43,9 @@ class InsertRowsTest extends BaseTest
             ),
             $append,
             $iterator,
-            $bulk
+            $bulk,
+            // Lets the writer write the rows again, if the workbook session expires.
+            fn(): \Iterator => new \ArrayIterator($insertRows)
         );
 
         // Check result

@@ -53,6 +53,8 @@ class Api
 
     private ?WorkbookSession $workbookSession = null;
 
+    private int $sessionLostCount = 0;
+
     public function __construct(Graph $graphApi, LoggerInterface $logger)
     {
         $this->graphApi = $graphApi;
@@ -79,14 +81,19 @@ class Api
         return $file;
     }
 
+    /**
+     * @param callable|null $rowsFactory Creates a new iterator over the same source rows.
+     *     It is used to write rows again if the workbook session expires. See InsertRowsManager.
+     */
     public function insertRows(
         Sheet $sheet,
         bool $append,
         Iterator $rows,
-        int $batchSize = 30000
+        int $batchSize = 30000,
+        ?callable $rowsFactory = null
     ): void {
         $manager = new InsertRowsManager($this->logger, $this);
-        $manager->insert($sheet, $append, $rows, $batchSize);
+        $manager->insert($sheet, $append, $rows, $batchSize, $rowsFactory);
     }
 
     public function clearSheet(Sheet $sheet): void
@@ -396,6 +403,42 @@ class Api
         }
     }
 
+    /**
+     * Number of workbook sessions that the API invalidated during this run.
+     *
+     * Microsoft can discard changes that it accepted in a session that later becomes invalid.
+     * A caller that writes data compares this value before and after each write. If the value
+     * changed, the caller must write the affected rows again. See InsertRowsManager.
+     */
+    public function getSessionLostCount(): int
+    {
+        return $this->sessionLostCount;
+    }
+
+    public function hasSession(): bool
+    {
+        return $this->workbookSession instanceof WorkbookSession;
+    }
+
+    /**
+     * Drops the invalid session. The writer continues without a session.
+     *
+     * The API saves a request that uses no session immediately, so no later write can be
+     * discarded. A new session could expire again and discard more rows.
+     * The retry policy can evaluate the same error more than once, so this method must
+     * change the state only one time for one lost session.
+     */
+    private function onInvalidSession(): void
+    {
+        if ($this->workbookSession === null) {
+            return;
+        }
+
+        $this->workbookSession = null;
+        $this->sessionLostCount++;
+        $this->logger->info('Session expired. The writer continues without a session.');
+    }
+
     public function closeSession(): void
     {
         if (!$this->workbookSession) {
@@ -464,8 +507,7 @@ class Api
             }
 
             if ($e instanceof InvalidSessionException) {
-                $this->workbookSession = null;
-                $this->logger->info('Session expired, will recreate and retry.');
+                $this->onInvalidSession();
                 return true;
             }
 
